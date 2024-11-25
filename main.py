@@ -204,7 +204,7 @@ if uploaded_image:
                 image_data = base64.b64encode(image_bytes).decode("ascii")
 
             # 调用 API
-            API_URL = "http://192.168.3.194:8080/table-recognition"
+            API_URL = "http://221.4.210.166:8080/table-recognition"
             payload = {"image": image_data}
             response = requests.post(API_URL, json=payload)
 
