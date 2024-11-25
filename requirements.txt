@@ -126,14 +126,6 @@ nltk==3.9.1
 notebook==7.2.2
 notebook_shim==0.2.3
 numexpr==2.10.1
-nvidia-cublas-cu11==11.11.3.6
-nvidia-cuda-nvrtc-cu11==11.8.89
-nvidia-cuda-runtime-cu11==11.8.89
-nvidia-cudnn-cu11==8.9.4.19
-nvidia-cufft-cu11==10.9.0.58
-nvidia-curand-cu11==10.3.0.86
-nvidia-cusolver-cu11==11.4.1.48
-nvidia-cusparse-cu11==11.7.5.86
 olefile==0.47
 openapi-schema-validator==0.6.2
 openapi-spec-validator==0.7.1
