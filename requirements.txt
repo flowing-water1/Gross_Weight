@@ -2,3 +2,4 @@ rapidfuzz
 openpyxl
 streamlit-aggrid
 st-copy-to-clipboard
+streamlit-toggle-switch
