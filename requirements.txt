@@ -170,7 +170,7 @@ python-Levenshtein==0.12.2
 python-magic==0.4.27
 python-oxmsg==0.0.1
 pytz==2024.1
-pywin32==305.1
+pywin32
 pywinpty==2.0.10
 PyYAML==6.0.2
 pyzmq==25.1.2
