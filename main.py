@@ -206,7 +206,11 @@ if uploaded_image:
             # 调用 API
             API_URL = "http://192.168.3.194:8080/table-recognition"
             payload = {"image": image_data}
+            st.info(f"正在发送请求到 {API_URL}")
+            st.info(f"请求 payload: {payload}")
             response = requests.post(API_URL, json=payload)
+            st.info(f"响应状态码: {response.status_code}")
+            st.info(f"响应内容: {response.text}")
 
             if response.status_code == 200:
                 result = response.json()["result"]
@@ -253,6 +257,7 @@ if uploaded_image:
             # 捕获请求异常并提示服务端未启动
             st.error("无法连接到服务端。请确保服务端已启动并且可以访问。")
             st.error(f"详细错误信息：{e}")
+            st.error(f"请求详细信息：{e.request}")
 
     # 从 session_state 中读取 OCR 结果
     if 'ocr_result_df' in st.session_state:
