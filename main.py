@@ -1,7 +1,6 @@
 import os
 import pandas as pd
 import streamlit as st
-from paddlex import create_pipeline
 from weight_calculation import calculate_total_weight
 from data_extraction import extract_product_and_quantity
 from data_cleaning import clean_product_name, clean_product_specifications
