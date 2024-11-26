@@ -225,6 +225,8 @@ if uploaded_image:
                 tables = result.get("tables", [])
                 xlsx_file_path = os.path.join(result_dir, f"{base_filename}.xlsx")
                 st.info("表格和路径确定成功")
+                st.write(tables)
+                st.write(xlsx_file_path)
                 if tables:
                     with pd.ExcelWriter(xlsx_file_path) as writer:
                         for idx, table in enumerate(tables):
