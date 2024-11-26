@@ -202,15 +202,10 @@ if uploaded_image:
             # 调用 API
             API_URL = "https://92d2-221-4-210-166.ngrok-free.app/table-recognition"
             payload = {"image": image_data}
-            # st.info(f"正在发送请求到 {API_URL}")
-            # st.info(f"请求 payload: {payload}")
             response = requests.post(API_URL, json=payload,timeout=10)
-            # st.info(f"响应状态码: {response.status_code}")
-            # st.info(f"响应内容: {response.text}")
 
             if response.status_code == 200:
                 result = response.json()["result"]
-                st.info(result)
                 # 保存 OCR 和布局图像
                 result_dir = os.path.join(os.path.dirname(temp_file_path), "out")
                 os.makedirs(result_dir, exist_ok=True)
