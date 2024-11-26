@@ -14,10 +14,6 @@ import base64
 from io import StringIO
 import requests
 
-#1.服务端调用的表格文件清洗（先在本地调用）
-#2.看看能不能在AWS上部署模型
-
-
 # Streamlit App Setup
 st.set_page_config(layout="wide",initial_sidebar_state='collapsed')
 title_col1, title_col2, title_col3 = st.columns([0.6, 1, 0.5])
@@ -206,15 +202,15 @@ if uploaded_image:
             # 调用 API
             API_URL = "http://192.168.3.194:8080/table-recognition"
             payload = {"image": image_data}
-            st.info(f"正在发送请求到 {API_URL}")
-            st.info(f"请求 payload: {payload}")
-            response = requests.post(API_URL, json=payload)
-            st.info(f"响应状态码: {response.status_code}")
-            st.info(f"响应内容: {response.text}")
+            # st.info(f"正在发送请求到 {API_URL}")
+            # st.info(f"请求 payload: {payload}")
+            response = requests.post(API_URL, json=payload.timeout = 10)
+            # st.info(f"响应状态码: {response.status_code}")
+            # st.info(f"响应内容: {response.text}")
 
             if response.status_code == 200:
                 result = response.json()["result"]
-
+                st.info(result)
                 # 保存 OCR 和布局图像
                 result_dir = os.path.join(os.path.dirname(temp_file_path), "out")
                 os.makedirs(result_dir, exist_ok=True)
@@ -253,10 +249,10 @@ if uploaded_image:
             else:
                 st.error(f"API 调用失败，状态码: {response.status_code}，消息: {response.text}")
 
-        except requests.exceptions.RequestException as e:
+        except Exception as e:
             # 捕获请求异常并提示服务端未启动
             st.error("无法连接到服务端。请确保服务端已启动并且可以访问。")
-            st.error(f"详细错误信息：{e}")
+            st.error(f"详细错误信息：{str(e)}")
             st.error(f"请求详细信息：{e.request}")
 
     # 从 session_state 中读取 OCR 结果
