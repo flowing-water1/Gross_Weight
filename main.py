@@ -15,19 +15,18 @@ from io import StringIO
 import requests
 
 # Streamlit App Setup
-st.set_page_config(layout="wide",initial_sidebar_state='collapsed')
+st.set_page_config(layout="wide", initial_sidebar_state='collapsed')
 title_col1, title_col2, title_col3 = st.columns([0.6, 1, 0.5])
 with title_col2:
     st.title("产品数据提取与重量计算")
 
-
 # 上传图片
 uploaded_image = st.file_uploader("上传产品图片", type=["png", "jpg", "jpeg"])
-
 
 # 初始化 session_state
 if "toggle_status" not in st.session_state:
     st.session_state["toggle_status"] = False
+
 
 @st.fragment
 def toggle_fragment():
@@ -51,7 +50,6 @@ def toggle_fragment():
         st.rerun()
 
 
-
 # 侧边栏简易功能
 with st.sidebar:
     st.header("简易匹配工具")
@@ -69,7 +67,6 @@ with st.sidebar:
     sidebar_quantity = st.number_input("输入数量", min_value=0, step=1)
 
     if (sidebar_product_name or sidebar_product_code) and sidebar_quantity > 0:
-
 
         # 清洗产品名称或编码
         cleaned_name = clean_product_name(sidebar_product_name) if sidebar_product_name else None
@@ -131,7 +128,8 @@ with st.sidebar:
             if selected_match is None:
                 st.warning("未找到符合条件的匹配项，请检查数据或重新选择。")
             else:
-                st.info(f"选择的产品名称: {original_product_name}  \n选择的产品编码: {selected_match['code']}  \n产品规格：{product_spec}  \n毛重: {selected_match['weight']} KG")
+                st.info(
+                    f"选择的产品名称: {original_product_name}  \n选择的产品编码: {selected_match['code']}  \n产品规格：{product_spec}  \n毛重: {selected_match['weight']} KG")
                 total_weight = calculate_total_weight(
                     product_names=[original_product_name],  # 使用原始产品名称
                     quantities=[sidebar_quantity],
@@ -148,10 +146,11 @@ with st.sidebar:
                 For_Update_Original_data['产品编号（金蝶云）'] == best_match['code'].strip(), '产品规格'].values[0]
             cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
 
-            #转义，避免文字变成斜体
+            # 转义，避免文字变成斜体
             original_best_product_name_escaped = original_best_product_name.replace("*", "\\*")
             product_spec_escaped = product_spec.replace("*", "\\*")
-            st.info(f"最佳匹配项名称: {original_best_product_name_escaped}  \n最佳匹配项编码: {best_match['code']}  \n产品规格：{product_spec_escaped}  \n毛重: {best_match['weight']} KG")
+            st.info(
+                f"最佳匹配项名称: {original_best_product_name_escaped}  \n最佳匹配项编码: {best_match['code']}  \n产品规格：{product_spec_escaped}  \n毛重: {best_match['weight']} KG")
 
             total_weight = calculate_total_weight(
                 product_names=[original_best_product_name],  # 使用原始产品名称
@@ -203,16 +202,11 @@ if uploaded_image:
             payload = {"image": image_data}
             response = requests.post(API_URL, json=payload, timeout=10)
 
-            # 打印 API 返回的状态码和响应内容
-            st.info(f"API 响应状态码: {response.status_code}")
-            st.info(f"API 响应内容: {response.text}")
-
             if response.status_code == 200:
                 result = response.json().get("result", {})
 
                 if not result:
                     st.error("API 返回的数据为空或格式不正确。")
-                    
 
                 # 保存 OCR 和布局图像
                 result_dir = os.path.join(os.path.dirname(temp_file_path), "out")
@@ -226,9 +220,11 @@ if uploaded_image:
                 with open(layout_image_path, "wb") as file:
                     file.write(base64.b64decode(result.get("layoutImage", "")))
 
+                st.info("图片写入成功")
                 # 提取表格数据并保存为 Excel
                 tables = result.get("tables", [])
                 xlsx_file_path = os.path.join(result_dir, f"{base_filename}.xlsx")
+                st.info("表格和路径确定成功")
                 if tables:
                     with pd.ExcelWriter(xlsx_file_path) as writer:
                         for idx, table in enumerate(tables):
@@ -236,7 +232,7 @@ if uploaded_image:
                             dfs = pd.read_html(StringIO(html_content))
                             if dfs:
                                 df = dfs[0]
-                                sheet_name = f"Sheet{idx+1}"
+                                sheet_name = f"Sheet{idx + 1}"
                                 # 打印表格数据及目标文件路径
                                 st.info(f"正在写入表格数据到 {sheet_name} 工作表")
                                 st.info(f"表格数据内容: {df.head()}")
@@ -274,7 +270,6 @@ if uploaded_image:
             if os.path.exists(image_file):
                 expander.image(image_file, caption=f"识别结果: {os.path.basename(image_file)}", use_column_width=True)
 
-
         # 从 session_state 中读取 OCR 结果
         markdown_col1, markdown_col2, markdown_col3 = st.columns([1.5, 1, 1])
         with markdown_col2:
@@ -283,7 +278,7 @@ if uploaded_image:
             **文件名:** `{uploaded_image.name}`  
             """, unsafe_allow_html=True)
 
-        dataframe_col1, dataframe_col2= st.columns([0.5, 1])
+        dataframe_col1, dataframe_col2 = st.columns([0.5, 1])
         with dataframe_col2:
             st.dataframe(ocr_result_df)
         # 提取数据
@@ -305,7 +300,6 @@ if uploaded_image:
         matched_product_names = []
         matched_product_weights = []
         matched_product_codes = []
-
 
         # 临时存储用户选择的结果
         user_selected_products = {}
@@ -335,7 +329,6 @@ if uploaded_image:
                 # 查找 cleaned_name 对应的原始产品名称
                 original_name = For_Update_Original_data.loc[
                     For_Update_Original_data["产品编号（金蝶云）"] == best_match["code"], "产品名称"].values[0]
-
 
                 st.warning(
                     f"↓&emsp; 表格行号为{original_row_index}行： 产品 '{original_name}' 的最佳匹配项相似度为 {best_match['similarity']}，需要手动选择匹配项&emsp;↓")
@@ -403,7 +396,7 @@ if uploaded_image:
             if user_input_id in For_Update_Original_data["产品编号（金蝶云）"].values:
                 # 查找 `For_Update_Original_data` 中匹配的行
                 correct_row = \
-                For_Update_Original_data[For_Update_Original_data["产品编号（金蝶云）"] == user_input_id].iloc[0]
+                    For_Update_Original_data[For_Update_Original_data["产品编号（金蝶云）"] == user_input_id].iloc[0]
                 # 更新 "产品名称"、"产品规格" 和 "毛重" 列
                 ocr_result_df.at[idx, "产品名称"] = correct_row["产品名称"]
                 ocr_result_df.at[idx, "产品规格"] = correct_row["产品规格"]
@@ -422,9 +415,9 @@ if uploaded_image:
 
         with col1:
             # 显示 AgGrid 表格并捕获用户修改
-            modify_table_markdown_col1, modify_table_markdown_col2,modify_table_markdown_col3= st.columns([0.75,1,0.5])
+            modify_table_markdown_col1, modify_table_markdown_col2, modify_table_markdown_col3 = st.columns(
+                [0.75, 1, 0.5])
             with modify_table_markdown_col2:
-
                 st.markdown(f"""
                             ### 修改的表格
                             """, unsafe_allow_html=True)
@@ -455,7 +448,7 @@ if uploaded_image:
             if user_input_id in For_Update_Original_data["产品编号（金蝶云）"].values:
                 # 查找在 cleaned_data 中匹配的行
                 correct_row = \
-                For_Update_Original_data[For_Update_Original_data["产品编号（金蝶云）"] == user_input_id].iloc[0]
+                    For_Update_Original_data[For_Update_Original_data["产品编号（金蝶云）"] == user_input_id].iloc[0]
                 # 更新 "产品名称" 和 "产品规格" 列
                 updated_ocr_df.at[index, "产品名称"] = correct_row["产品名称"]
                 updated_ocr_df.at[index, "产品规格"] = correct_row["产品规格"]
@@ -463,9 +456,9 @@ if uploaded_image:
 
         # 显示更新后的 AgGrid 表格
         with col2:
-            determine_table_markdown_col1, determine_table_markdown_col2, determine_table_markdown_col3= st.columns([0.75,1,0.5])
+            determine_table_markdown_col1, determine_table_markdown_col2, determine_table_markdown_col3 = st.columns(
+                [0.75, 1, 0.5])
             with determine_table_markdown_col2:
-
                 st.markdown(f"""
                             ### 确定的表格
                             """, unsafe_allow_html=True)
