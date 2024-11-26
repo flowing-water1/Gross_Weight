@@ -200,7 +200,7 @@ if uploaded_image:
                 image_data = base64.b64encode(image_bytes).decode("ascii")
 
             # 调用 API
-            API_URL = "http://192.168.3.194:8080/table-recognition"
+            API_URL = "https://92d2-221-4-210-166.ngrok-free.app/table-recognition"
             payload = {"image": image_data}
             # st.info(f"正在发送请求到 {API_URL}")
             # st.info(f"请求 payload: {payload}")
