@@ -232,7 +232,9 @@ if uploaded_image:
                     with pd.ExcelWriter(xlsx_file_path) as writer:
                         st.info("2")
                         for idx, table in enumerate(tables):
+                            st.info("3")
                             html_content = table.get("html", "")
+                            st.info("4")
                             dfs = pd.read_html(StringIO(html_content))
                             st.info("遍历表格")
                             if dfs:
