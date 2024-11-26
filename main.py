@@ -220,32 +220,22 @@ if uploaded_image:
                 with open(layout_image_path, "wb") as file:
                     file.write(base64.b64decode(result.get("layoutImage", "")))
 
-                st.info("图片写入成功")
                 # 提取表格数据并保存为 Excel
                 tables = result.get("tables", [])
                 xlsx_file_path = os.path.join(result_dir, f"{base_filename}.xlsx")
-                st.info("表格和路径确定成功")
                 st.write(tables)
                 st.write(xlsx_file_path)
                 if tables:
-                    st.info("1")
                     with pd.ExcelWriter(xlsx_file_path) as writer:
-                        st.info("2")
                         for idx, table in enumerate(tables):
-                            st.info("3")
                             html_content = table.get("html", "")
-                            st.info("4")
                             st.write(html_content)  # 打印 HTML 内容检查格式
                             dfs = pd.read_html(StringIO(html_content))
-                            st.info("遍历表格")
                             if dfs:
                                 df = dfs[0]
                                 sheet_name = "Sheet"
                                 # 打印表格数据及目标文件路径
-                                st.info(f"正在写入表格数据到 {sheet_name} 工作表")
-                                st.info(f"表格数据内容: {df.head()}")
                                 df.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
-                    st.info("这里出错了吗？")
                     # 更新 session_state
                     ocr_result_df = pd.read_excel(xlsx_file_path, header=None)
                     ocr_result_df.columns = ["产品名称", "产品规格", "数量"]
