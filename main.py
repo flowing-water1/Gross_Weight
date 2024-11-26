@@ -204,7 +204,7 @@ if uploaded_image:
             payload = {"image": image_data}
             # st.info(f"正在发送请求到 {API_URL}")
             # st.info(f"请求 payload: {payload}")
-            response = requests.post(API_URL, json=payload.timeout = 10)
+            response = requests.post(API_URL, json=payload.timeout=10)
             # st.info(f"响应状态码: {response.status_code}")
             # st.info(f"响应内容: {response.text}")
 
