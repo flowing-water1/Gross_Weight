@@ -253,7 +253,6 @@ if uploaded_image:
             # 捕获请求异常并提示服务端未启动
             st.error("无法连接到服务端。请确保服务端已启动并且可以访问。")
             st.error(f"详细错误信息：{str(e)}")
-            st.error(f"请求详细信息：{e.request}")
 
     # 从 session_state 中读取 OCR 结果
     if 'ocr_result_df' in st.session_state:
