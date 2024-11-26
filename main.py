@@ -162,7 +162,6 @@ with st.sidebar:
             )
             st.success(f"总毛重: {total_weight:.2f} KG")
 
-
 if uploaded_image:
     # 初始化 session_state 变量
     if 'previous_uploaded_file_name' not in st.session_state:
@@ -202,10 +201,19 @@ if uploaded_image:
             # 调用 API
             API_URL = "https://92d2-221-4-210-166.ngrok-free.app/table-recognition"
             payload = {"image": image_data}
-            response = requests.post(API_URL, json=payload,timeout=10)
+            response = requests.post(API_URL, json=payload, timeout=10)
+
+            # 打印 API 返回的状态码和响应内容
+            st.info(f"API 响应状态码: {response.status_code}")
+            st.info(f"API 响应内容: {response.text}")
 
             if response.status_code == 200:
-                result = response.json()["result"]
+                result = response.json().get("result", {})
+
+                if not result:
+                    st.error("API 返回的数据为空或格式不正确。")
+                    
+
                 # 保存 OCR 和布局图像
                 result_dir = os.path.join(os.path.dirname(temp_file_path), "out")
                 os.makedirs(result_dir, exist_ok=True)
@@ -214,21 +222,24 @@ if uploaded_image:
                 ocr_image_path = os.path.join(result_dir, f"{base_filename}_ocr.jpg")
                 layout_image_path = os.path.join(result_dir, f"{base_filename}_layout.jpg")
                 with open(ocr_image_path, "wb") as file:
-                    file.write(base64.b64decode(result["ocrImage"]))
+                    file.write(base64.b64decode(result.get("ocrImage", "")))
                 with open(layout_image_path, "wb") as file:
-                    file.write(base64.b64decode(result["layoutImage"]))
+                    file.write(base64.b64decode(result.get("layoutImage", "")))
 
                 # 提取表格数据并保存为 Excel
-                tables = result["tables"]
+                tables = result.get("tables", [])
                 xlsx_file_path = os.path.join(result_dir, f"{base_filename}.xlsx")
                 if tables:
                     with pd.ExcelWriter(xlsx_file_path) as writer:
                         for idx, table in enumerate(tables):
-                            html_content = table["html"]
+                            html_content = table.get("html", "")
                             dfs = pd.read_html(StringIO(html_content))
                             if dfs:
                                 df = dfs[0]
                                 sheet_name = "Sheet"
+                                # 打印表格数据及目标文件路径
+                                st.info(f"正在写入表格数据到 {sheet_name} 工作表")
+                                st.info(f"表格数据内容: {df.head()}")
                                 df.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
 
                     # 更新 session_state
