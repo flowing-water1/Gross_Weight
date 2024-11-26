@@ -236,7 +236,7 @@ if uploaded_image:
                             dfs = pd.read_html(StringIO(html_content))
                             if dfs:
                                 df = dfs[0]
-                                sheet_name = "Sheet"
+                                sheet_name = f"Sheet{idx+1}"
                                 # 打印表格数据及目标文件路径
                                 st.info(f"正在写入表格数据到 {sheet_name} 工作表")
                                 st.info(f"表格数据内容: {df.head()}")
