@@ -228,7 +228,9 @@ if uploaded_image:
                 st.write(tables)
                 st.write(xlsx_file_path)
                 if tables:
+                    st.info("1")
                     with pd.ExcelWriter(xlsx_file_path) as writer:
+                        st.info("2")
                         for idx, table in enumerate(tables):
                             html_content = table.get("html", "")
                             dfs = pd.read_html(StringIO(html_content))
