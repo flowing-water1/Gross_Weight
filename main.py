@@ -404,10 +404,12 @@ if uploaded_image:
         gb = GridOptionsBuilder.from_dataframe(ocr_result_df)
         gb.configure_grid_options(domLayout='autoHeight')
 
-        gb.configure_default_column(editable=True)  # 所有列都可编辑
         gb.configure_column("产品编号(金蝶云)", editable=True)  # 使产品编号可编辑
+        gb.configure_column("毛重",editable = True)
+        gb.configure_column("产品规格",editable =True)
         gb.configure_column("数量", editable=True)  # 使数量列可编辑
-        gb.configure_default_column(min_column_width = 100)
+
+        gb.configure_default_column(min_column_width=100)
         grid_options = gb.build()
 
         col1, col2 = st.columns(2)
