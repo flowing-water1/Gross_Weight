@@ -402,11 +402,12 @@ if uploaded_image:
 
         # 配置 AgGrid 选项
         gb = GridOptionsBuilder.from_dataframe(ocr_result_df)
-        gb.configure_grid_options(domLayout='normal')
+        gb.configure_grid_options(domLayout='autoHeight')
 
         gb.configure_default_column(editable=True)  # 所有列都可编辑
         gb.configure_column("产品编号(金蝶云)", editable=True)  # 使产品编号可编辑
         gb.configure_column("数量", editable=True)  # 使数量列可编辑
+        gb.configure_default_column(min_column_width = 100)
         grid_options = gb.build()
 
         col1, col2 = st.columns(2)
@@ -423,7 +424,7 @@ if uploaded_image:
                 ocr_result_df,
                 gridOptions=grid_options,
                 editable=True,
-                update_mode=GridUpdateMode.VALUE_CHANGED,
+                update_mode=GridUpdateMode.MODEL_CHANGED,
                 theme="alpine",
                 fit_columns_on_grid_load=True
             )
