@@ -235,6 +235,7 @@ if uploaded_image:
                             st.info("3")
                             html_content = table.get("html", "")
                             st.info("4")
+                            st.write(html_content)  # 打印 HTML 内容检查格式
                             dfs = pd.read_html(StringIO(html_content))
                             st.info("遍历表格")
                             if dfs:
