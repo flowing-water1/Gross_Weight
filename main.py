@@ -198,7 +198,7 @@ if uploaded_image:
                 image_data = base64.b64encode(image_bytes).decode("ascii")
 
             # 调用 API
-            API_URL = "https://92d2-221-4-210-166.ngrok-free.app/table-recognition"
+            API_URL = "https://flow-water.1127107.xyz/table-recognition"
             payload = {"image": image_data}
             response = requests.post(API_URL, json=payload, timeout=10)
 
