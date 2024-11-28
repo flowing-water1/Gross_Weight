@@ -223,13 +223,10 @@ if uploaded_image:
                 # 提取表格数据并保存为 Excel
                 tables = result.get("tables", [])
                 xlsx_file_path = os.path.join(result_dir, f"{base_filename}.xlsx")
-                st.write(tables)
-                st.write(xlsx_file_path)
                 if tables:
                     with pd.ExcelWriter(xlsx_file_path) as writer:
                         for idx, table in enumerate(tables):
                             html_content = table.get("html", "")
-                            st.write(html_content)  # 打印 HTML 内容检查格式
                             dfs = pd.read_html(StringIO(html_content))
                             if dfs:
                                 df = dfs[0]
@@ -246,8 +243,13 @@ if uploaded_image:
                     st.session_state['ocr_result_original_df'] = ocr_result_original_df
                 else:
                     st.warning("OCR 识别失败，请重试。")
+            elif response.status_code == 502:
+                st.error("无法连接到本地服务。请确保本地服务已启动，并且可通过内网穿透访问。")
+
             else:
-                st.error(f"API 调用失败，状态码: {response.status_code}，消息: {response.text}")
+                st.error(f"API 调用失败，状态码: {response.status_code}")
+                with st.expander("详细报错信息"):
+                    st.error(f"{response.text}")
 
         except Exception as e:
             # 捕获请求异常并提示服务端未启动
