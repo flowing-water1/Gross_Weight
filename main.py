@@ -485,7 +485,7 @@ if uploaded_image:
             updated_codes = updated_ocr_df["产品编号(金蝶云)"].tolist()
 
             # 使用更新后的数据进行计算
-            total_weight = calculate_total_weight(
+            total_weight, container_info = calculate_total_weight(
                 updated_product_names,
                 updated_quantities,
                 cleaned_updated_specifications_names,
@@ -493,8 +493,72 @@ if uploaded_image:
                 updated_codes
             )
 
-            # 输出总毛重
             st.success(f"计算完成！总毛重: {total_weight:.2f} KG")
+
+            with st.expander("🚚\u2003柜数计算\u2003🚚"):
+                large_containers, small_containers = allocate_products_to_containers(container_info)
+
+
+                df_container = pd.DataFrame(container_info)
+                # 输出总毛重
+                st.dataframe(df_container)
+
+                # 存储大柜子和小柜子的详细信息
+                big_containers_info = []
+                small_containers_info = []
+
+                # 收集大柜子装载范围信息
+                container_count_big = 1
+                for container in large_containers:
+                    container_info = f"大柜子{container_count_big}装载范围："
+                    container_products_info = []
+                    # 遍历大柜子中的每个产品，储存详细信息
+                    for product in container:
+                        product_name = product['产品名称']
+                        tray_count = product['托盘数']
+                        single_product_weight = product['单个产品总毛重']
+                        # 格式化输出每个产品的详细信息
+                        product_info = f"产品名字：{product_name}\n托盘数: {tray_count:.2f}\n产品总毛重: {single_product_weight:.3f} KG"
+                        container_products_info.append(product_info)
+
+                    # 将每个柜子的信息添加到大柜子列表中
+                    big_containers_info.append((container_info, container_products_info))
+                    container_count_big += 1
+
+                # 收集小柜子装载范围信息
+                container_count_small = 1
+                for container in small_containers:
+                    container_info = f"\n小柜子{container_count_small}装载范围："
+                    container_products_info = []
+
+
+                    for product in container:
+                        product_name = product['产品名称']
+                        tray_count = product['托盘数']
+                        single_product_weight = product['单个产品总毛重']
+                        # 格式化输出每个产品的详细信息
+                        product_info = f"产品名字：{product_name}\n托盘数: {tray_count:.2f}\n产品总毛重: {single_product_weight:.3f} KG"
+                        container_products_info.append(product_info)
+
+                    # 将每个柜子的信息添加到小柜子列表中
+                    small_containers_info.append((container_info, container_products_info))
+                    container_count_small += 1
+
+                # 优先展示总共需要的柜子数
+                st.info(f"总共需要{container_count_big - 1}个大柜子，{container_count_small - 1}个小柜子")
+
+                # 展示大柜子和小柜子的详细信息
+
+                for container_info, products_info in big_containers_info:
+                    with st.expander(container_info):
+                        for product_info in products_info:
+                            st.info(product_info)
+
+                for container_info, products_info in small_containers_info:
+                    with st.expander(container_info):
+                        for product_info in products_info:
+                            st.info(product_info)
+
             st.divider()
 
         else:
@@ -506,3 +570,4 @@ if uploaded_image:
         text_area = st.text_area(" ", copy_text, height=200, key="text_area")
         st.divider()
         st_copy_to_clipboard(copy_text)
+
