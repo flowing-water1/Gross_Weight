@@ -206,7 +206,7 @@ if uploaded_image:
 
 
             # 调用 API
-            API_URL = "http://api123.1127107.xyz/table-recognition"
+            API_URL = "https://api123.1127107.xyz/table-recognition"
             st.write(f"image_data 类型: {type(image_data)}")
             st.write(f"image_data 内容: {image_data[:100]}")
             payload = {"image": image_data}
