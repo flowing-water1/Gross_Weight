@@ -413,7 +413,7 @@ if uploaded_image:
         # 配置 AgGrid 选项
         gb = GridOptionsBuilder.from_dataframe(ocr_result_df)
         gb.configure_pagination()
-        gb.configure_grid_options(domLayout='autoHeight', alwaysShowVerticalScroll = True)
+        gb.configure_grid_options(domLayout='normal',)
 
         gb.configure_column("产品编号(金蝶云)", editable=True)  # 使产品编号可编辑
         gb.configure_column("毛重",editable = True)
