@@ -1,3 +1,4 @@
+import json
 import os
 import pandas as pd
 import streamlit as st
@@ -203,11 +204,14 @@ if uploaded_image:
                 image_data = base64.b64encode(image_bytes).decode("ascii")
 
 
-            st.write("image_data",image_data[:100])
+
             # 调用 API
             API_URL = "https://api123.1127107.xyz/table-recognition"
+            st.write(f"image_data 类型: {type(image_data)}")
+            st.write(f"image_data 内容: {image_data[:100]}")
             payload = {"image": image_data}
-            st.write("payload",payload)
+            st.write(f"payload (JSON 格式): {json.dumps(payload)}")
+
             response = requests.post(API_URL, json=payload, timeout=10)
 
             if response.status_code == 200:
