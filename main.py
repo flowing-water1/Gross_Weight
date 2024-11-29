@@ -202,6 +202,8 @@ if uploaded_image:
                     st.error("读取的图像数据为空！")
                 image_data = base64.b64encode(image_bytes).decode("ascii")
 
+
+            st.write("image_data",image_data[:100])
             # 调用 API
             API_URL = "https://api123.1127107.xyz/table-recognition"
             payload = {"image": image_data}
@@ -249,7 +251,7 @@ if uploaded_image:
                     st.session_state['ocr_result_original_df'] = ocr_result_original_df
                 else:
                     st.write("请求的数据：", payload)
-                    
+
                     st.warning("OCR 识别失败，请重试。")
             elif response.status_code == 502:
                 st.error("无法连接到本地服务。请确保本地服务已启动，并且可通过内网穿透访问。")
