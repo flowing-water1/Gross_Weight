@@ -210,7 +210,7 @@ if uploaded_image:
             st.write(f"image_data 类型: {type(image_data)}")
             st.write(f"image_data 内容: {image_data[:100]}")
             payload = {"image": image_data}
-            st.write(f"payload (JSON 格式): {json.dumps(payload)}")
+            st.write(f"payload (JSON 格式): {json.dumps(payload)[:100]}")
 
             response = requests.post(API_URL, json=payload, timeout=10)
 
