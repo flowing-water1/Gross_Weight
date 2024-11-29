@@ -205,6 +205,8 @@ if uploaded_image:
             payload = {"image": image_data}
             response = requests.post(API_URL, json=payload, timeout=10)
 
+            st.write("test1",payload)
+
             if response.status_code == 200:
                 result = response.json().get("result", {})
 
@@ -246,7 +248,6 @@ if uploaded_image:
                     st.session_state['ocr_result_original_df'] = ocr_result_original_df
                 else:
                     st.write("请求的数据：", payload)
-                    st.write("响应内容：", response.text)
                     st.warning("OCR 识别失败，请重试。")
             elif response.status_code == 502:
                 st.error("无法连接到本地服务。请确保本地服务已启动，并且可通过内网穿透访问。")
