@@ -207,17 +207,17 @@ if uploaded_image:
 
             # 调用 API
             API_URL = "https://api123.1127107.xyz/table-recognition"
-            st.write(f"image_data 类型: {type(image_data)}")
-            st.write(f"image_data 内容: {image_data[:100]}")
+            # st.write(f"image_data 类型: {type(image_data)}")
+            # st.write(f"image_data 内容: {image_data[:100]}")
             payload = {"image": image_data}
-            st.write(f"payload (JSON 格式): {json.dumps(payload)[:100]}")
+            # st.write(f"payload (JSON 格式): {json.dumps(payload)[:100]}")
 
             response = requests.post(API_URL, json=payload, timeout=10)
-            st.write(f"response (JSON 格式): {json.dumps(response)[:100]}")
+            # st.write(f"response (JSON 格式): {json.dumps(response)[:100]}")
 
             if response.status_code == 200:
                 result = response.json().get("result", {})
-                st.write(f"result (JSON 格式): {json.dumps(result)[:100]}")
+                # st.write(f"result (JSON 格式): {json.dumps(result)[:100]}")
                 if not result:
                     st.error("API 返回的数据为空或格式不正确。")
 
