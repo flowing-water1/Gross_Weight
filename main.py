@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import streamlit as st
-from weight_calculation import calculate_total_weight
+from weight_calculation import calculate_total_weight, calculate_total_weight_for_sidebar
 from data_extraction import extract_product_and_quantity
 from data_cleaning import clean_product_name, clean_product_specifications
 from matching import find_best_match, find_best_match_by_code
@@ -133,7 +133,7 @@ with st.sidebar:
             else:
                 st.info(
                     f"选择的产品名称: {original_product_name}  \n选择的产品编码: {selected_match['code']}  \n产品规格：{product_spec}  \n毛重: {selected_match['weight']} KG")
-                total_weight = calculate_total_weight(
+                total_weight = calculate_total_weight_for_sidebar(
                     product_names=[original_product_name],  # 使用原始产品名称
                     quantities=[sidebar_quantity],
                     cleaned_product_specifications_names=[cleaned_spec],  # 传入清洗后的规格
@@ -306,81 +306,81 @@ if uploaded_image:
 
         # 临时存储用户选择的结果
         user_selected_products = {}
+        with st.expander("选择最佳匹配项"):
+            for idx, cleaned_name in enumerate(cleaned_product_names):
 
-        for idx, cleaned_name in enumerate(cleaned_product_names):
+                filtered_indices = ocr_result_original_df.index[
+                    ocr_result_original_df["产品名称"] == original_product_names[idx]].tolist()
 
-            filtered_indices = ocr_result_original_df.index[
-                ocr_result_original_df["产品名称"] == original_product_names[idx]].tolist()
-
-            if len(filtered_indices) == 0:
-                st.warning(f"找不到与产品名称 '{original_product_names[idx]}' 相匹配的行，请检查数据。")
-                continue
-            else:
-                original_row_index = filtered_indices[0]
-
-            match_result = find_best_match(
-                cleaned_name,
-                product_names,
-                product_weights,
-                product_codes,
-            )
-
-            best_match = match_result["best_match"]
-            all_matches = match_result["all_matches"]
-
-            if best_match["similarity"] < 99:
-                # 查找 cleaned_name 对应的原始产品名称
-                original_name = For_Update_Original_data.loc[
-                    For_Update_Original_data["产品编号（金蝶云）"] == best_match["code"], "产品名称"].values[0]
-
-                st.warning(
-                    f"↓&emsp; 表格行号为{original_row_index}行： 产品 '{original_name}' 的最佳匹配项相似度为 {best_match['similarity']}，需要手动选择匹配项&emsp;↓")
-
-                # 提供前 5 个匹配项供选择
-                options = [
-                    f"编号：{match['code']} | 产品名称： {For_Update_Original_data.loc[For_Update_Original_data['产品编号（金蝶云）'] == match['code'].strip(), '产品名称'].values[0]} | 相似度: {match['similarity']} | 毛重: {match['weight']} ".replace(
-                        " | ", "\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A0")
-                    for match in all_matches
-                ]
-
-                # 默认值为第一个选项
-                default_option = options[0]
-
-                user_selection = st.selectbox(
-                    " ",
-                    options,
-                    index=0,
-                    key=f"selection_{idx}",
-                    label_visibility="collapsed"
-                )
-                # 使用新的分隔符来拆分选项字符串
-                split_separator = "\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A0"
-                selected_product_code = user_selection.split(split_separator)[0].strip()  # 产品编号在选项的最前面
-
-                # 如果前缀是 "编号："（注意这里的全角符号）
-                if selected_product_code.startswith("编号："):
-                    selected_product_code = selected_product_code[len("编号："):].strip()
-
-                # 使用产品编号匹配而不是名称匹配
-                selected_match = next(
-                    (match for match in all_matches if match["code"].strip() == selected_product_code.strip()), None)
-
-                if selected_match is None:
-                    st.warning("未找到符合条件的匹配项，请检查数据或重新选择。")
-                    # 不匹配，解决这里的问题，大概率是因为格式不同，所以搜索不到。
+                if len(filtered_indices) == 0:
+                    st.warning(f"找不到与产品名称 '{original_product_names[idx]}' 相匹配的行，请检查数据。")
+                    continue
                 else:
-                    # 更新匹配结果
-                    matched_product_names.append(selected_match["name"])
-                    matched_product_weights.append(selected_match["weight"])
-                    matched_product_codes.append(selected_match["code"])
+                    original_row_index = filtered_indices[0]
 
-                    # 存储用户选择结果
-                    user_selected_products[cleaned_name] = selected_match
-            else:
-                # 如果相似度 >= 99，直接使用最佳匹配
-                matched_product_names.append(best_match["name"])
-                matched_product_weights.append(best_match["weight"])
-                matched_product_codes.append(best_match["code"])
+                match_result = find_best_match(
+                    cleaned_name,
+                    product_names,
+                    product_weights,
+                    product_codes,
+                )
+
+                best_match = match_result["best_match"]
+                all_matches = match_result["all_matches"]
+
+                if best_match["similarity"] < 99:
+                    # 查找 cleaned_name 对应的原始产品名称
+                    original_name = For_Update_Original_data.loc[
+                        For_Update_Original_data["产品编号（金蝶云）"] == best_match["code"], "产品名称"].values[0]
+
+                    st.warning(
+                        f"↓&emsp; 表格行号为{original_row_index}行： 产品 '{original_name}' 的最佳匹配项相似度为 {best_match['similarity']}，需要手动选择匹配项&emsp;↓")
+
+                    # 提供前 5 个匹配项供选择
+                    options = [
+                        f"编号：{match['code']} | 产品名称： {For_Update_Original_data.loc[For_Update_Original_data['产品编号（金蝶云）'] == match['code'].strip(), '产品名称'].values[0]} | 相似度: {match['similarity']} | 毛重: {match['weight']} ".replace(
+                            " | ", "\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A0")
+                        for match in all_matches
+                    ]
+
+                    # 默认值为第一个选项
+                    default_option = options[0]
+
+                    user_selection = st.selectbox(
+                        " ",
+                        options,
+                        index=0,
+                        key=f"selection_{idx}",
+                        label_visibility="collapsed"
+                    )
+                    # 使用新的分隔符来拆分选项字符串
+                    split_separator = "\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A0"
+                    selected_product_code = user_selection.split(split_separator)[0].strip()  # 产品编号在选项的最前面
+
+                    # 如果前缀是 "编号："（注意这里的全角符号）
+                    if selected_product_code.startswith("编号："):
+                        selected_product_code = selected_product_code[len("编号："):].strip()
+
+                    # 使用产品编号匹配而不是名称匹配
+                    selected_match = next(
+                        (match for match in all_matches if match["code"].strip() == selected_product_code.strip()), None)
+
+                    if selected_match is None:
+                        st.warning("未找到符合条件的匹配项，请检查数据或重新选择。")
+                        # 不匹配，解决这里的问题，大概率是因为格式不同，所以搜索不到。
+                    else:
+                        # 更新匹配结果
+                        matched_product_names.append(selected_match["name"])
+                        matched_product_weights.append(selected_match["weight"])
+                        matched_product_codes.append(selected_match["code"])
+
+                        # 存储用户选择结果
+                        user_selected_products[cleaned_name] = selected_match
+                else:
+                    # 如果相似度 >= 99，直接使用最佳匹配
+                    matched_product_names.append(best_match["name"])
+                    matched_product_weights.append(best_match["weight"])
+                    matched_product_codes.append(best_match["code"])
 
         # 当你使用 ocr_result_df.insert() 方法插入一个新列时，如果这个列已经存在于 ocr_result_df 中，会抛出一个 ValueError 错误，因为 insert()
         # 方法要求插入的列是新的且不存在的。
@@ -407,8 +407,9 @@ if uploaded_image:
 
         # 配置 AgGrid 选项
         gb = GridOptionsBuilder.from_dataframe(ocr_result_df)
-        gb.configure_grid_options(domLayout='autoHeight')
-
+        gb.configure_pagination()
+        gb.configure_grid_options(domLayout='autoHeight', alwaysShowVerticalScroll = True)
+        
         gb.configure_column("产品编号(金蝶云)", editable=True)  # 使产品编号可编辑
         gb.configure_column("毛重",editable = True)
         gb.configure_column("产品规格",editable =True)
