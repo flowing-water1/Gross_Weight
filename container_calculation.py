@@ -58,7 +58,7 @@ def allocate_products_to_containers(products, small_container_limit_pallets=20, 
         total_weight = sum(item['单个产品总毛重'] for item in container)
 
         # 如果该大柜子符合小柜子的条件，直接装入小柜子
-        if total_pallets < small_container_limit_pallets and total_weight < 21000:
+        if total_pallets <= small_container_limit_pallets and total_weight <= 21000:
             small_containers.append(container)
         else:
             new_large_containers.append(container)
