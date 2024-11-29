@@ -212,7 +212,7 @@ if uploaded_image:
             payload = {"image": image_data}
             # st.write(f"payload (JSON 格式): {json.dumps(payload)[:100]}")
 
-            response = requests.post(API_URL, json=payload, timeout=10)
+            response = requests.post(API_URL, json=payload, timeout=30)
             # st.write(f"response (JSON 格式): {json.dumps(response)[:100]}")
 
             if response.status_code == 200:
