@@ -182,7 +182,7 @@ if uploaded_image:
         st.toast(f"你上传的图片文件是: {uploaded_image.name}")
         st.divider()
         st.info("文件预览：")
-        st.image(uploaded_image, caption='上传的图片', use_column_width=True)
+        st.image(uploaded_image, caption='上传的图片', use_container_width=True)
 
         # 使用 NamedTemporaryFile 保存上传的文件
         original_file_name = os.path.splitext(uploaded_image.name)[0]
@@ -201,7 +201,7 @@ if uploaded_image:
                 image_data = base64.b64encode(image_bytes).decode("ascii")
 
             # 调用 API
-            API_URL = "https://api123.1127107.xyz/table-recognition"
+            API_URL = "http://api123.1127107.xyz/table-recognition"
             payload = {"image": image_data}
             response = requests.post(API_URL, json=payload, timeout=10)
 
@@ -407,8 +407,9 @@ if uploaded_image:
 
         # 配置 AgGrid 选项
         gb = GridOptionsBuilder.from_dataframe(ocr_result_df)
-        gb.configure_grid_options(domLayout='normal')
-        
+        gb.configure_pagination()
+        gb.configure_grid_options(domLayout='autoHeight', alwaysShowVerticalScroll = True)
+
         gb.configure_column("产品编号(金蝶云)", editable=True)  # 使产品编号可编辑
         gb.configure_column("毛重",editable = True)
         gb.configure_column("产品规格",editable =True)
