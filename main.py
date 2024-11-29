@@ -255,7 +255,7 @@ if uploaded_image:
                     ocr_result_original_df = ocr_result_df.copy()
                     st.session_state['ocr_result_original_df'] = ocr_result_original_df
                 else:
-                    st.write("请求的数据：", payload)
+                    st.write("请求的数据：", payload[:100])
 
                     st.warning("OCR 识别失败，请重试。")
             elif response.status_code == 502:
