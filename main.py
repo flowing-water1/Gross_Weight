@@ -350,10 +350,16 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
             **文件名:** `uploaded_table.xlsx`
             """, unsafe_allow_html=True)
 
+    # 只是为了展示的表格而已，不会因为状态变更而改变，一开始什么样就是什么样
+    # 因为if 'display_df' not in st.session_state:约束了只有第一次才会诞生
+    # 之后display_df都在session_state里了，就算rerun也不会进入下面的代码中
+    if 'display_df' not in st.session_state:
+        st.session_state['display_df'] = ocr_result_df.copy()
+        st.session_state['display_df'].index = st.session_state['display_df'].index + 1
+
     dataframe_col1, dataframe_col2 = st.columns([0.45, 1])
     with dataframe_col2:
-        ocr_result_df.index = ocr_result_df.index + 1
-        st.dataframe(ocr_result_df)
+        st.dataframe(st.session_state['display_df'])
 
     # 提取数据
     original_product_names, specifications, quantities = extract_product_and_quantity(xlsx_file_path)
@@ -382,9 +388,6 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
         # 初始化每个选择项的标志为 False，表示用户尚未进行选择
         st.session_state['user_selection_flag'] = [False] * len(cleaned_product_names)
 
-    # 用于跟踪每个 selectbox 的上次选择
-    # selectbox 会默认选择第一个选项，但因为 user_previous_selection 初始为 None，所以我们知道这是初次加载，而不是用户主动选择的行为。
-    # 因此，不触发 st.toast()。
     if 'user_previous_selection' not in st.session_state:
         st.session_state['user_previous_selection'] = [None] * len(cleaned_product_names)
 
@@ -392,7 +395,8 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
     user_selected_products = {}
     with st.expander("选择最佳匹配项"):
         for idx, cleaned_name in enumerate(cleaned_product_names):
-            print(len(cleaned_product_names))
+            print(f"Loop idx: {idx}, Current selection: {st.session_state['user_previous_selection'][idx]}")
+
             filtered_indices = ocr_result_original_df.index[
                 ocr_result_original_df["产品名称"] == original_product_names[idx]].tolist()
 
@@ -465,25 +469,56 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
 
                     # 存储用户选择结果
                     user_selected_products[cleaned_name] = selected_match
-
-                    # 如果用户选择发生了变化，并且之前的选择不为空（即初次加载时没有变化）
-                    print(f"1+{st.session_state['user_previous_selection']}")
+                    # """
+                    # 为什么一开始不会出现st.toast呢？让我们来分析这个问题。
+                    # 在一开始初始化的时候，为每一个产品名的user_selection_flag都设置为了False，user_previous_selection都是None
+                    # 注意，这是为每一个产品名都赋值了
+                    # Initialized user_selection_flag:
+                    #  [False, False, False, False, False, False, False]
+                    # Initialized user_previous_selection:
+                    #  [None, None, None, None, None, None, None, None]
+                    #  那比如有2个选项，2,4相似度是低于99的，那么其实我们就有两个选项会被处理。
+                    #  一开始因为user_selection没被选，但是user_previous_selection是None，所以我们无论如何都会过一遍这里的代码
+                    #  好，巧妙的点来了，这是利用了状态更新的滞后性来达到“初始化的时候”不会出现toast
+                    #  经过了2的时候，一开始是不会进入 if user_selection_flag的，因为都是False，但是因为这里是会诞生user_selection的
+                    #  （因为select_box会默认选择第一项的原因，也就是user_previous_selection都被设置为了select_box的默认值
+                    #  但是由于第一次每次检测user_selection_flag都会是False，所以不会进入判断）
+                    #  经过2之后，2的user_selection_flag被设定了True，但是！
+                    #  但是巧妙的点来了，下一次是3了，就跳过了这次判断！。
+                    #  所以整体流程是这样的
+                    #  最开始：
+                    # Initialized user_selection_flag:
+                    #  [False, False, False, False, False, False, False]
+                    # Initialized user_previous_selection:
+                    #  [None, None, None, None, None, None, None, None]
+                    #  经过第一次初始化遍历之后：
+                    # Initialized user_selection_flag:
+                    #  [False, False, True, False, True, False, False]
+                    # Initialized user_previous_selection:
+                    #  [None, None, 123, None, 456, None, None, None]
+                    #
+                    #  好，那么下次选择变更的时候，都是[idx]的user_previous_selection，此时起主要判断关键的，是的user_previous_selection
+                    #  因为st.session_state['user_selection_flag'][idx]在第一次设置之后，2,4都是True了
+                    #  所以只要是的user_previous_selection对应的[idx]发生变更，就会触发toast。
+                    #  比如说我对2选择了别的选项，那么2的user_previous_selection变更了，变更之后会再进入for循环的，这时到轮转到第2个的时候
+                    #  就发现此时的st.session_state['user_previous_selection'][idx] != user_selection，那么就会触发toast了
+                    # """
+                    # 没有这个的话每个匹配项都会展示一次toast
                     if st.session_state['user_previous_selection'][idx] != user_selection:
-                        print(f"2+{idx}+{st.session_state['user_selection_flag']}")
-                        # st.session_state['user_selection_flag'][idx]：这是一个布尔值，表示该 selectbox 是否已经被用户手动选择过。
-                        # 初始状态下，这个值是 False，表示用户还没有做出选择。
-                        # 当用户做出选择时，它会被设置为 True，然后在下次用户选择时触发提示。
 
                         if st.session_state['user_selection_flag'][idx]:
                             # 仅在用户手动更改选项后显示 toast
+                            print(f"now_idx:{idx}")
                             st.toast("已手动选择匹配项")
 
                         # 更新选择标志和上一次选择值
                         st.session_state['user_selection_flag'][idx] = True
+                        print(f"Updated user_selection_flag for idx {idx}: {st.session_state['user_selection_flag']}")
                         st.session_state['user_previous_selection'][idx] = user_selection
+                        print(
+                            f"Updated user_previous_selection for idx {idx}: {st.session_state['user_previous_selection']}")
 
-                        # st.session_state['user_selection_flag'][idx] = True：标记该选项已经被用户手动选择过。
-                        # st.session_state['user_previous_selection'][idx] = user_selection：更新用户的选择值，记录当前的选择，以便下一次交互时对比。
+
 
             else:
                 # 如果相似度 >= 99，直接使用最佳匹配
@@ -503,6 +538,7 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
 
     ocr_result_df["毛重"] = matched_product_weights
 
+    # 下面这个更新（选项）是为了每次创建AgGrid时，能够被刷新到，不是修改编号变化（这个问题暂时没有解决）
     # 更新 ocr_result_df 表格
     for idx, row in ocr_result_df.iterrows():
         user_input_id = row["产品编号(金蝶云)"]  # 获取产品编号
@@ -515,7 +551,13 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
             ocr_result_df.at[idx, "产品规格"] = correct_row["产品规格"]
             ocr_result_df.at[idx, "毛重"] = correct_row["毛重（箱/桶）"]
 
-    # 配置 AgGrid 选项
+    # 假设 ocr_result_df 是你的原始 DataFrame
+    ocr_result_df.reset_index(drop=True, inplace=True)  # 重置索引并丢弃旧的索引列
+    ocr_result_df['行'] = ocr_result_df.index + 1  # 添加一列新的行，从 1 开始
+
+    # 将“行号”列放在第一列
+    ocr_result_df = ocr_result_df[['行'] + [col for col in ocr_result_df.columns if col != '行']]
+
     gb = GridOptionsBuilder.from_dataframe(ocr_result_df)
     gb.configure_grid_options(domLayout='normal')
 
@@ -558,6 +600,7 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
     else:
         updated_ocr_df = edited_df
 
+    # 下面这个是为了在AgGrid中修改数据能在“确定表格”中有所修改
     # 实时检测和部分列替换
     for index, row in edited_df.iterrows():
         user_input_id = row["产品编号(金蝶云)"]  # 只检测“产品编号”列
@@ -571,6 +614,7 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
             updated_ocr_df.at[index, "毛重"] = correct_row["毛重（箱/桶）"]
 
     # 显示更新后的 AgGrid 表格
+
     with col2:
         determine_table_markdown_col1, determine_table_markdown_col2, determine_table_markdown_col3 = st.columns(
             [0.75, 1, 0.5])
@@ -578,8 +622,7 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
             st.markdown(f"""
                         ### 确定的表格
                         """, unsafe_allow_html=True)
-        # st.write("更新后的 OCR 识别结果：")
-        st.dataframe(updated_ocr_df)
+        st.dataframe(updated_ocr_df, hide_index=True)
 
 if 'updated_ocr_df' in locals():
     if st.button("确定"):
@@ -674,7 +717,35 @@ if 'updated_ocr_df' in locals():
 
     # 将 DataFrame 转为字符串，以便在文本区域中显示
     if 'edited_df' in locals():
-        copy_text = edited_df.to_csv(index=False, sep='\t')  # 使用 tab 作为分隔符，更便于复制到表格工具如 Excel
+        copy_text_df = edited_df.copy()
+        copy_text_df["净重"] = float("nan")
+
+
+        # 遍历 copy_text_df，更新“净重”列
+        for index, row in copy_text_df.iterrows():
+            user_input_id = row["产品编号(金蝶云)"]  # 获取用户输入的产品编号
+
+            # 检查产品编号是否在 For_Update_Original_data 中存在
+            if user_input_id in For_Update_Original_data["产品编号（金蝶云）"].values:
+                # 查找在 For_Update_Original_data 中匹配的行
+                correct_row = \
+                For_Update_Original_data[For_Update_Original_data["产品编号（金蝶云）"] == user_input_id].iloc[0]
+
+                # 如果“净重”列存在于 For_Update_Original_data，更新“净重”列
+                if "净重" in correct_row:
+                    copy_text_df.at[index, "净重"] = correct_row["净重"]
+
+        # 去除第一列（行号列）
+        copy_text_df = copy_text_df.iloc[:, 1:]
+
+        # 将“净重”列放在“毛重”列的左边
+        columns = list(copy_text_df.columns)
+        gross_weight_index = columns.index("毛重")  # 找到“毛重”列的位置
+        # 将“净重”列插入到“毛重”列的左边
+        columns.insert(gross_weight_index, columns.pop(columns.index("净重")))
+        copy_text_df = copy_text_df[columns]
+
+        copy_text = copy_text_df.to_csv(index=False, sep='\t')  # 使用 tab 作为分隔符，更便于复制到表格工具如 Excel
 
         text_area = st.text_area(" ", copy_text, height=200, key="text_area")
         st.divider()
