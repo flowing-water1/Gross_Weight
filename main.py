@@ -423,7 +423,7 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
                     For_Update_Original_data["产品编号（金蝶云）"] == best_match["code"], "产品名称"].values[0]
 
                 warning_message = (
-                    f"↓ 表格{original_row_index + 1} 行： 产品：{original_product_names[idx]}，"
+                    f"↓ 表格{original_row_index + 1} 行： 识别产品：{original_product_names[idx]}，"
                     f"对应的最佳匹配项为：产品 '{original_name}'，"
                     f"相似度为 {best_match['similarity']:.2f}，可能需要手动选择匹配项 ↓"
                 ).replace("*", "\\*")  # 转义所有的 *
