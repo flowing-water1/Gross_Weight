@@ -168,109 +168,108 @@ upload_method = st.radio("请选择上传方式", ("图片上传", "粘贴表格
 
 if upload_method == "图片上传":
     st.warning("Please Be Patient And Wait◽◽◽◽")
-    pass
-    # # 当进入图片上传模式时，清空文本模式的数据
-    # if 'ocr_result_df_text' in st.session_state:
-    #     del st.session_state['ocr_result_df_text']
-    #
-    # # 上传图片
-    # uploaded_image = st.file_uploader("上传产品图片", type=["png", "jpg", "jpeg"])
-    #
-    # if uploaded_image:
-    #     # 初始化 session_state 变量
-    #     if 'previous_uploaded_file_name' not in st.session_state:
-    #         st.session_state['previous_uploaded_file_name'] = uploaded_image.name
-    #
-    #     # 如果上传了新的文件，与之前的文件不同，则清空 session_state 中除 `previous_uploaded_file_name` 以外的数据
-    #     if st.session_state['previous_uploaded_file_name'] != uploaded_image.name:
-    #         # 保留原始的文件名以避免被清除
-    #         previous_uploaded_file_name = st.session_state['previous_uploaded_file_name']
-    #         # 清空所有 session_state，重新设置 `previous_uploaded_file_name`
-    #         st.session_state.clear()
-    #         st.session_state['previous_uploaded_file_name'] = previous_uploaded_file_name
-    #         st.session_state['previous_uploaded_file_name'] = uploaded_image.name
-    #
-    #     # st.session_state 中不存在 'ocr_result_df_image' 这个键（也就是说还没有 OCR 结果）。
-    #     # 也就是首次运行、页面刷新后的首次上传或上传了新图片时才执行 OCR 操作。
-    #     if 'ocr_result_df_image' not in st.session_state:
-    #         st.toast(f"你上传的图片文件是: {uploaded_image.name}")
-    #
-    #         # 使用 NamedTemporaryFile 保存上传的文件
-    #         original_file_name = os.path.splitext(uploaded_image.name)[0]
-    #         standardized_filename = f"{original_file_name}_uploaded.png"
-    #         temp_file_path = os.path.join(".", standardized_filename)
-    #         with open(temp_file_path, "wb") as temp_file:
-    #             temp_file.write(uploaded_image.read())
-    #
-    #         # OCR 处理部分（使用服务端 API 替换本地模型）
-    #         st.toast("正在进行表格识别...")
-    #
-    #         try:
-    #             # 对本地图像进行 Base64 编码
-    #             with open(temp_file_path, "rb") as file:
-    #                 image_bytes = file.read()
-    #                 if not image_bytes:
-    #                     st.error("读取的图像数据为空！")
-    #                 image_data = base64.b64encode(image_bytes).decode("ascii")
-    #
-    #             # 调用 API
-    #             API_URL = "https://api123.1127107.xyz/table-recognition"
-    #             payload = {"image": image_data}
-    #
-    #             response = requests.post(API_URL, json=payload, timeout=30)
-    #
-    #             if response.status_code == 200:
-    #                 result = response.json().get("result", {})
-    #                 if not result:
-    #                     st.error("API 返回的数据为空或格式不正确。")
-    #
-    #                 # 保存 OCR 和布局图像
-    #                 result_dir = os.path.join(os.path.dirname(temp_file_path), "out")
-    #                 os.makedirs(result_dir, exist_ok=True)
-    #                 base_filename = os.path.splitext(os.path.basename(temp_file_path))[0]
-    #
-    #                 ocr_image_path = os.path.join(result_dir, f"{base_filename}_ocr.jpg")
-    #                 layout_image_path = os.path.join(result_dir, f"{base_filename}_layout.jpg")
-    #                 with open(ocr_image_path, "wb") as file:
-    #                     file.write(base64.b64decode(result.get("ocrImage", "")))
-    #                 with open(layout_image_path, "wb") as file:
-    #                     file.write(base64.b64decode(result.get("layoutImage", "")))
-    #
-    #                 # 提取表格数据并保存为 Excel
-    #                 tables = result.get("tables", [])
-    #                 xlsx_file_path = os.path.join(result_dir, f"{base_filename}.xlsx")
-    #                 if tables:
-    #                     with pd.ExcelWriter(xlsx_file_path) as writer:
-    #                         for idx, table in enumerate(tables):
-    #                             html_content = table.get("html", "")
-    #                             dfs = pd.read_html(StringIO(html_content))
-    #                             if dfs:
-    #                                 df = dfs[0]
-    #                                 sheet_name = "Sheet"
-    #                                 # 打印表格数据及目标文件路径
-    #                                 df.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
-    #                     # 更新 session_state
-    #                     ocr_result_df = pd.read_excel(xlsx_file_path, header=None)
-    #                     ocr_result_df.columns = ["产品名称", "产品规格", "数量"]
-    #                     st.session_state['ocr_result_df_image'] = ocr_result_df
-    #                     st.session_state['image_files'] = [layout_image_path, ocr_image_path]
-    #                     st.session_state['xlsx_file_path'] = xlsx_file_path
-    #                     ocr_result_original_df = ocr_result_df.copy()
-    #                     st.session_state['ocr_result_original_df'] = ocr_result_original_df
-    #                 else:
-    #                     st.warning("OCR 识别失败，请重试。")
-    #             elif response.status_code == 502:
-    #                 st.error("无法连接到本地服务。请确保本地服务已启动，并且可通过内网穿透访问。")
-    #
-    #             else:
-    #                 st.error(f"API 调用失败，状态码: {response.status_code}")
-    #                 with st.expander("详细报错信息"):
-    #                     st.error(f"{response.text}")
-    #
-    #         except Exception as e:
-    #             # 捕获请求异常并提示服务端未启动
-    #             st.error("无法连接到服务端。请确保服务端已启动并且可以访问。")
-    #             st.error(f"详细错误信息：{str(e)}")
+    # 当进入图片上传模式时，清空文本模式的数据
+    if 'ocr_result_df_text' in st.session_state:
+        del st.session_state['ocr_result_df_text']
+
+    # 上传图片
+    uploaded_image = st.file_uploader("上传产品图片", type=["png", "jpg", "jpeg"])
+
+    if uploaded_image:
+        # 初始化 session_state 变量
+        if 'previous_uploaded_file_name' not in st.session_state:
+            st.session_state['previous_uploaded_file_name'] = uploaded_image.name
+
+        # 如果上传了新的文件，与之前的文件不同，则清空 session_state 中除 `previous_uploaded_file_name` 以外的数据
+        if st.session_state['previous_uploaded_file_name'] != uploaded_image.name:
+            # 保留原始的文件名以避免被清除
+            previous_uploaded_file_name = st.session_state['previous_uploaded_file_name']
+            # 清空所有 session_state，重新设置 `previous_uploaded_file_name`
+            st.session_state.clear()
+            st.session_state['previous_uploaded_file_name'] = previous_uploaded_file_name
+            st.session_state['previous_uploaded_file_name'] = uploaded_image.name
+
+        # st.session_state 中不存在 'ocr_result_df_image' 这个键（也就是说还没有 OCR 结果）。
+        # 也就是首次运行、页面刷新后的首次上传或上传了新图片时才执行 OCR 操作。
+        if 'ocr_result_df_image' not in st.session_state:
+            st.toast(f"你上传的图片文件是: {uploaded_image.name}")
+
+            # 使用 NamedTemporaryFile 保存上传的文件
+            original_file_name = os.path.splitext(uploaded_image.name)[0]
+            standardized_filename = f"{original_file_name}_uploaded.png"
+            temp_file_path = os.path.join(".", standardized_filename)
+            with open(temp_file_path, "wb") as temp_file:
+                temp_file.write(uploaded_image.read())
+
+            # OCR 处理部分（使用服务端 API 替换本地模型）
+            st.toast("正在进行表格识别...")
+
+            try:
+                # 对本地图像进行 Base64 编码
+                with open(temp_file_path, "rb") as file:
+                    image_bytes = file.read()
+                    if not image_bytes:
+                        st.error("读取的图像数据为空！")
+                    image_data = base64.b64encode(image_bytes).decode("ascii")
+
+                # 调用 API
+                API_URL = "https://api123.1127107.xyz/table-recognition"
+                payload = {"image": image_data}
+
+                response = requests.post(API_URL, json=payload, timeout=30)
+
+                if response.status_code == 200:
+                    result = response.json().get("result", {})
+                    if not result:
+                        st.error("API 返回的数据为空或格式不正确。")
+
+                    # 保存 OCR 和布局图像
+                    result_dir = os.path.join(os.path.dirname(temp_file_path), "out")
+                    os.makedirs(result_dir, exist_ok=True)
+                    base_filename = os.path.splitext(os.path.basename(temp_file_path))[0]
+
+                    ocr_image_path = os.path.join(result_dir, f"{base_filename}_ocr.jpg")
+                    layout_image_path = os.path.join(result_dir, f"{base_filename}_layout.jpg")
+                    with open(ocr_image_path, "wb") as file:
+                        file.write(base64.b64decode(result.get("ocrImage", "")))
+                    with open(layout_image_path, "wb") as file:
+                        file.write(base64.b64decode(result.get("layoutImage", "")))
+
+                    # 提取表格数据并保存为 Excel
+                    tables = result.get("tables", [])
+                    xlsx_file_path = os.path.join(result_dir, f"{base_filename}.xlsx")
+                    if tables:
+                        with pd.ExcelWriter(xlsx_file_path) as writer:
+                            for idx, table in enumerate(tables):
+                                html_content = table.get("html", "")
+                                dfs = pd.read_html(StringIO(html_content))
+                                if dfs:
+                                    df = dfs[0]
+                                    sheet_name = "Sheet"
+                                    # 打印表格数据及目标文件路径
+                                    df.to_excel(writer, sheet_name=sheet_name, index=False, header=False)
+                        # 更新 session_state
+                        ocr_result_df = pd.read_excel(xlsx_file_path, header=None)
+                        ocr_result_df.columns = ["产品名称", "产品规格", "数量"]
+                        st.session_state['ocr_result_df_image'] = ocr_result_df
+                        st.session_state['image_files'] = [layout_image_path, ocr_image_path]
+                        st.session_state['xlsx_file_path'] = xlsx_file_path
+                        ocr_result_original_df = ocr_result_df.copy()
+                        st.session_state['ocr_result_original_df'] = ocr_result_original_df
+                    else:
+                        st.warning("OCR 识别失败，请重试。")
+                elif response.status_code == 502:
+                    st.error("无法连接到本地服务。请确保本地服务已启动，并且可通过内网穿透访问。")
+
+                else:
+                    st.error(f"API 调用失败，状态码: {response.status_code}")
+                    with st.expander("详细报错信息"):
+                        st.error(f"{response.text}")
+
+            except Exception as e:
+                # 捕获请求异常并提示服务端未启动
+                st.error("无法连接到服务端。请确保服务端已启动并且可以访问。")
+                st.error(f"详细错误信息：{str(e)}")
 
 elif upload_method == "粘贴表格文本":
 
@@ -315,28 +314,28 @@ elif upload_method == "粘贴表格文本":
 
 # 从 session_state 中读取 OCR 结果
 if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.session_state:
-    # if upload_method == "图片上传":
-    #     if uploaded_image:
-    #         st.image(uploaded_image, caption='上传的图片', use_column_width=True)
-    #         ocr_result_df = st.session_state['ocr_result_df_image']
-    #         image_files = st.session_state.get('image_files', [])
-    #         xlsx_file_path = st.session_state['xlsx_file_path']
-    #         ocr_result_original_df = st.session_state['ocr_result_original_df']
-    #
-    #         # 展示识别的图片
-    #         expander = st.expander("OCR 识别的图片结果：")
-    #         for image_file in image_files:
-    #             if os.path.exists(image_file):
-    #                 expander.image(image_file, caption=f"识别结果: {os.path.basename(image_file)}",
-    #                                use_column_width=True)
-    #
-    #         # 从 session_state 中读取 OCR 结果
-    #         markdown_col1, markdown_col2, markdown_col3 = st.columns([1.5, 1, 1])
-    #         with markdown_col2:
-    #             st.markdown(f"""
-    #             ### OCR 识别结果
-    #             **文件名:** `{uploaded_image.name}`
-    #             """, unsafe_allow_html=True)
+    if upload_method == "图片上传":
+        if uploaded_image:
+            st.image(uploaded_image, caption='上传的图片', use_column_width=True)
+            ocr_result_df = st.session_state['ocr_result_df_image']
+            image_files = st.session_state.get('image_files', [])
+            xlsx_file_path = st.session_state['xlsx_file_path']
+            ocr_result_original_df = st.session_state['ocr_result_original_df']
+
+            # 展示识别的图片
+            expander = st.expander("OCR 识别的图片结果：")
+            for image_file in image_files:
+                if os.path.exists(image_file):
+                    expander.image(image_file, caption=f"识别结果: {os.path.basename(image_file)}",
+                                   use_column_width=True)
+
+            # 从 session_state 中读取 OCR 结果
+            markdown_col1, markdown_col2, markdown_col3 = st.columns([1.5, 1, 1])
+            with markdown_col2:
+                st.markdown(f"""
+                ### OCR 识别结果
+                **文件名:** `{uploaded_image.name}`
+                """, unsafe_allow_html=True)
 
     if upload_method == "粘贴表格文本":
         ocr_result_df = st.session_state['ocr_result_df_text']
@@ -423,7 +422,7 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
                     For_Update_Original_data["产品编号（金蝶云）"] == best_match["code"], "产品名称"].values[0]
 
                 warning_message = (
-                    f"↓ 表格{original_row_index + 1} 行： 识别产品：{original_product_names[idx]}，"
+                    f"↓ 表格{original_row_index + 1} 行： 产品：{original_product_names[idx]}，"
                     f"对应的最佳匹配项为：产品 '{original_name}'，"
                     f"相似度为 {best_match['similarity']:.2f}，可能需要手动选择匹配项 ↓"
                 ).replace("*", "\\*")  # 转义所有的 *
