@@ -167,7 +167,6 @@ with st.sidebar:
 upload_method = st.radio("请选择上传方式", ("图片上传", "粘贴表格文本"))
 
 if upload_method == "图片上传":
-    st.warning("Please Be Patient And Wait◽◽◽◽")
     # 当进入图片上传模式时，清空文本模式的数据
     if 'ocr_result_df_text' in st.session_state:
         del st.session_state['ocr_result_df_text']
