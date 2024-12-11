@@ -244,8 +244,24 @@ with st.sidebar:
             )
             st.success(f"总毛重: {total_weight:.2f} KG")
 
+if "last_upload_method" not in st.session_state:
+    st.session_state["last_upload_method"] = None
 
 upload_method = st.radio("请选择上传方式", ("图片上传", "粘贴表格文本"))
+
+
+# 在模式切换后重置状态的通用逻辑函数
+def reset_states_on_method_change():
+    # 如果上传方式发生变化，则调用 reset_calculation_states 以及清空相关 session_state
+    if st.session_state["last_upload_method"] is not None and st.session_state["last_upload_method"] != upload_method:
+        reset_calculation_states()
+
+    # 更新上一次选择的模式
+    st.session_state["last_upload_method"] = upload_method
+
+
+# 调用该函数，使其根据模式变化进行清理
+reset_states_on_method_change()
 
 if upload_method == "图片上传":
     if 'calc_done' not in st.session_state:
