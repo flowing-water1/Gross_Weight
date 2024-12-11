@@ -46,7 +46,7 @@ def reset_calculation_states():
             del st.session_state[key]
 
 
-@st.dialog("🚚\u2003柜数计算\u2003🚚", width="large")
+@st.dialog("🚚\u2003柜数计算\u2003🚚", width="small")
 def cabinet(container_info):
     large_containers, small_containers = allocate_products_to_containers(container_info)
 
