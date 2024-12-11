@@ -30,6 +30,86 @@ with title_col2:
 if "toggle_status" not in st.session_state:
     st.session_state["toggle_status"] = False
 
+# 初始化 session_state 中的按钮状态
+if "show_button_cabinet" not in st.session_state:
+    st.session_state.show_button_cabinet = False
+
+# 初始化 session_state 中的额外状态位
+if "cabinet_mode" not in st.session_state:
+    st.session_state["cabinet_mode"] = False  # 控制柜重计算对话框打开时的状态
+
+
+def reset_calculation_states():
+    keys_to_reset = ["calc_done", "container_info", "total_weight", "calculation_details"]
+    for key in keys_to_reset:
+        if key in st.session_state:
+            del st.session_state[key]
+
+
+@st.dialog("🚚\u2003柜数计算\u2003🚚", width="large")
+def cabinet(container_info):
+    large_containers, small_containers = allocate_products_to_containers(container_info)
+
+    df_container = pd.DataFrame(container_info)
+    # 输出总毛重
+    with st.expander("各产品托数与毛重表格"):
+        st.dataframe(df_container, hide_index=True)
+
+    # 存储大柜子和小柜子的详细信息
+    big_containers_info = []
+    small_containers_info = []
+
+    # 收集大柜子装载范围信息
+    container_count_big = 1
+    for container in large_containers:
+        container_info = f"大柜子{container_count_big}装载范围："
+        container_products_info = []
+        # 遍历大柜子中的每个产品，储存详细信息
+        for product in container:
+            product_name = product['产品名称']
+            tray_count = product['托盘数']
+            single_product_weight = product['单个产品总毛重']
+            # 格式化输出每个产品的详细信息
+            product_info = f"产品名字：{product_name}\n托盘数: {tray_count:.2f}\n产品总毛重: {single_product_weight:.3f} KG"
+            container_products_info.append(product_info)
+
+        # 将每个柜子的信息添加到大柜子列表中
+        big_containers_info.append((container_info, container_products_info))
+        container_count_big += 1
+
+    # 收集小柜子装载范围信息
+    container_count_small = 1
+    for container in small_containers:
+        container_info = f"\n小柜子{container_count_small}装载范围："
+        container_products_info = []
+
+        for product in container:
+            product_name = product['产品名称']
+            tray_count = product['托盘数']
+            single_product_weight = product['单个产品总毛重']
+            # 格式化输出每个产品的详细信息
+            product_info = f"产品名字：{product_name}\n托盘数: {tray_count:.2f}\n产品总毛重: {single_product_weight:.3f} KG"
+            container_products_info.append(product_info)
+
+        # 将每个柜子的信息添加到小柜子列表中
+        small_containers_info.append((container_info, container_products_info))
+        container_count_small += 1
+
+    # 优先展示总共需要的柜子数
+    st.info(f"总共需要{container_count_big - 1}个大柜子，{container_count_small - 1}个小柜子")
+
+    # 展示大柜子和小柜子的详细信息
+
+    for container_info, products_info in big_containers_info:
+        with st.expander(container_info):
+            for product_info in products_info:
+                st.info(product_info)
+
+    for container_info, products_info in small_containers_info:
+        with st.expander(container_info):
+            for product_info in products_info:
+                st.info(product_info)
+
 
 @st.fragment
 def toggle_fragment():
@@ -53,123 +133,23 @@ def toggle_fragment():
         st.rerun()
 
 
-# 侧边栏简易功能
-with st.sidebar:
-    st.header("简易匹配工具")
-
-    toggle_fragment()
-
-    if not st.session_state["toggle_status"]:  # False 表示输入名称
-
-        sidebar_product_name = st.text_input("输入产品名称", key="nam🧬e_input")
-        sidebar_product_code = st.text_input("输入产品编码", disabled=True, key="code_input")
-    else:  # True 表示输入编码
-        sidebar_product_name = st.text_input("输入产品名称", disabled=True, key="name_input")
-        sidebar_product_code = st.text_input("输入产品编码", key="code_input")
-
-    sidebar_quantity = st.number_input("输入数量", min_value=0, step=1)
-
-    if (sidebar_product_name or sidebar_product_code) and sidebar_quantity > 0:
-
-        # 清洗产品名称或编码
-        cleaned_name = clean_product_name(sidebar_product_name) if sidebar_product_name else None
-        cleaned_code = sidebar_product_code.strip() if sidebar_product_code else None
-
-        # 从匹配文件中读取产品数据
-        matching_file_path = 'cleaned_data.xlsx'  # 需要在同一目录下提供该文件
-        df = pd.read_excel(matching_file_path, sheet_name='境外贸易商品名称')
-
-        product_names = df['型号'].dropna().astype(str).tolist()
-        original_product_names = df['型号'].dropna().astype(str).tolist()  # 假设这个列表包含原始未清洗的名称
-        product_weights = df['毛重（箱/桶）'].dropna().astype(float).tolist()
-        product_codes = df['产品编码(金蝶云)'].dropna().astype(str).tolist()
-
-        # 匹配产品
-        if cleaned_name:
-            match_result = find_best_match(
-                cleaned_name,
-                product_names,
-                product_weights,
-                product_codes,
-            )
-        elif cleaned_code:
-            match_result = find_best_match_by_code(
-                cleaned_code,
-                product_codes,
-                product_weights,
-                product_names,
-                original_product_names,
-            )
-        best_match = match_result["best_match"]
-        all_matches = match_result["all_matches"]
-
-        if best_match["similarity"] < 99:
-            # 提供前 5 个匹配项供选择
-            options = [
-                f"编号：{match['code']} | 产品名称： {For_Update_Original_data.loc[For_Update_Original_data['产品编号（金蝶云）'] == match['code'].strip(), '产品名称'].values[0]} | 相似度: {match['similarity']} | 毛重: {match['weight']}"
-                for match in all_matches
-            ]
-
-            user_selection = st.selectbox(
-                "选择最佳匹配项",
-                options,
-                index=0,
-                key="sidebar_selection"
-            )
-
-            # 使用产品编号匹配
-            original_product_name = user_selection.split("|")[1].strip().replace("产品名称：", "").strip()  # 获取未清洗的产品名称
-            selected_product_code = user_selection.split("|")[0].strip().replace("编号：", "").strip()
-            selected_match = next(
-                (match for match in all_matches if match["code"].strip() == selected_product_code), None
-            )
-
-            product_spec = For_Update_Original_data.loc[
-                For_Update_Original_data['产品编号（金蝶云）'] == selected_match['code'].strip(), '产品规格'].values[0]
-            cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
-
-            if selected_match is None:
-                st.warning("未找到符合条件的匹配项，请检查数据或重新选择。")
-            else:
-                st.info(
-                    f"选择的产品名称: {original_product_name}  \n选择的产品编码: {selected_match['code']}  \n产品规格：{product_spec}  \n毛重: {selected_match['weight']} KG")
-                total_weight = calculate_total_weight_for_sidebar(
-                    product_names=[original_product_name],  # 使用原始产品名称
-                    quantities=[sidebar_quantity],
-                    cleaned_product_specifications_names=[cleaned_spec],  # 传入清洗后的规格
-                    matched_product_weights=[selected_match['weight']],
-                    matched_product_codes=[selected_match['code']]
-                )
-                st.success(f"总毛重: {total_weight:.2f} KG")
-        else:
-            # 使用未清洗的产品名称来展示最佳匹配
-            original_best_product_name = For_Update_Original_data.loc[
-                For_Update_Original_data['产品编号（金蝶云）'] == best_match['code'].strip(), '产品名称'].values[0]
-            product_spec = For_Update_Original_data.loc[
-                For_Update_Original_data['产品编号（金蝶云）'] == best_match['code'].strip(), '产品规格'].values[0]
-            cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
-
-            # 转义，避免文字变成斜体
-            original_best_product_name_escaped = original_best_product_name.replace("*", "\\*")
-            product_spec_escaped = product_spec.replace("*", "\\*")
-            st.info(
-                f"最佳匹配项名称: {original_best_product_name_escaped}  \n最佳匹配项编码: {best_match['code']}  \n产品规格：{product_spec_escaped}  \n毛重: {best_match['weight']} KG")
-
-            total_weight = calculate_total_weight(
-                product_names=[original_best_product_name],  # 使用原始产品名称
-                quantities=[sidebar_quantity],
-                cleaned_product_specifications_names=[cleaned_spec],  # 传入清洗后的规格
-                matched_product_weights=[best_match['weight']],
-                matched_product_codes=[best_match['code']]
-            )
-            st.success(f"总毛重: {total_weight:.2f} KG")
-
 upload_method = st.radio("请选择上传方式", ("图片上传", "粘贴表格文本"))
 
 if upload_method == "图片上传":
+
     # 当进入图片上传模式时，清空文本模式的数据
     if 'ocr_result_df_text' in st.session_state:
         del st.session_state['ocr_result_df_text']
+
+    if 'display_df' in st.session_state:
+        del st.session_state['display_df']
+
+    # 同时清空用户选择的记录
+    if 'user_selection_flag' in st.session_state:
+        del st.session_state['user_selection_flag']
+
+    if 'user_previous_selection' in st.session_state:
+        del st.session_state['user_previous_selection']
 
     # 上传图片
     uploaded_image = st.file_uploader("上传产品图片", type=["png", "jpg", "jpeg"])
@@ -184,7 +164,10 @@ if upload_method == "图片上传":
             # 保留原始的文件名以避免被清除
             previous_uploaded_file_name = st.session_state['previous_uploaded_file_name']
             # 清空所有 session_state，重新设置 `previous_uploaded_file_name`
+            # 重置计算相关状态
+            reset_calculation_states()
             st.session_state.clear()
+
             st.session_state['previous_uploaded_file_name'] = previous_uploaded_file_name
             st.session_state['previous_uploaded_file_name'] = uploaded_image.name
 
@@ -272,13 +255,51 @@ if upload_method == "图片上传":
 
 elif upload_method == "粘贴表格文本":
 
-    table_text = st.text_area("请输入表格文本")
+    table_text = st.text_area("请输入表格文本", value=st.session_state.get("last_confirmed_data", ""))
 
     if 'ocr_result_df_image' in st.session_state:
         del st.session_state['ocr_result_df_image']
 
+    if 'display_df' in st.session_state:
+        del st.session_state['display_df']
+
+    # 清空与用户选择相关的状态
+    if 'user_selection_flag' in st.session_state:
+        del st.session_state['user_selection_flag']
+
+    if 'user_previous_selection' in st.session_state:
+        del st.session_state['user_previous_selection']
+
     if table_text:
-        if 'table_uploaded' not in st.session_state or not st.session_state['table_uploaded']:
+        # 清空旧的表格数据，确保上传新的数据时可以更新
+        if 'ocr_result_df_text' in st.session_state:
+            del st.session_state['ocr_result_df_text']
+        if 'table_uploaded' in st.session_state:
+            del st.session_state['table_uploaded']
+        if 'ocr_result_original_df' in st.session_state:
+            del st.session_state['ocr_result_original_df']
+        if 'display_df' in st.session_state:
+            del st.session_state['display_df']
+
+        # 对比当前输入的表格文本与之前确认的数据
+        previously_confirmed_data = st.session_state.get("last_confirmed_data", None)
+        # 如果还没calc_done或者（已calc_done但数据与last_confirmed_data不一致），则判定为新数据
+        is_really_new_data = (previously_confirmed_data is None) or (table_text != previously_confirmed_data)
+
+        # 只有在确定之前（calc_done=False）或者在calc_done为True但数据确实发生了变化时才执行reset
+        if is_really_new_data:
+            reset_calculation_states()
+            st.session_state['data_changed'] = True
+        else:
+            st.session_state['data_changed'] = False
+
+            # 将新的数据标记为上传完成
+            st.session_state['data_changed'] = True
+
+        if st.session_state['data_changed']:
+            # st.info(f"st.session_state['cabinet_mode']:{st.session_state['cabinet_mode']}")
+            # if 'cabinet_mode' in st.session_state:
+
             # 将粘贴的表格文本按行分割，并按 tab 进行拆分
             table_lines = table_text.split("\n")
             data = [line.split("\t") for line in table_lines if line.strip()]  # 过滤掉空行
@@ -310,6 +331,9 @@ elif upload_method == "粘贴表格文本":
             # 备份原始数据以便后续使用
             ocr_result_original_df = ocr_result_df.copy()
             st.session_state['ocr_result_original_df'] = ocr_result_original_df
+
+            # 处理完成后数据改变状态设为False
+            st.session_state['data_changed'] = False
 
 # 从 session_state 中读取 OCR 结果
 if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.session_state:
@@ -394,7 +418,7 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
     user_selected_products = {}
     with st.expander("选择最佳匹配项"):
         for idx, cleaned_name in enumerate(cleaned_product_names):
-            print(f"Loop idx: {idx}, Current selection: {st.session_state['user_previous_selection'][idx]}")
+            # print(f"Loop idx: {idx}, Current selection: {st.session_state['user_previous_selection'][idx]}")
 
             filtered_indices = ocr_result_original_df.index[
                 ocr_result_original_df["产品名称"] == original_product_names[idx]].tolist()
@@ -405,6 +429,8 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
             else:
                 original_row_index = filtered_indices[0]
 
+            # 查找逻辑是先在clean_data.xlsx中用名称匹配找（find_best_match传入的都是cleaned.xlsx里面的数据）
+            # 找到了以后，用code匹配在original_data.xlsx中找对应的各条目（For_Update_Original_data）
             match_result = find_best_match(
                 cleaned_name,
                 product_names,
@@ -623,7 +649,9 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
                         """, unsafe_allow_html=True)
         st.dataframe(updated_ocr_df, hide_index=True)
 
-if 'updated_ocr_df' in locals():
+if 'edited_ocr_result_df' in st.session_state:
+    updated_ocr_df = st.session_state['edited_ocr_result_df']
+
     if st.button("确定"):
         # 检查编辑后的 DataFrame 是否存在
         # 提取更新后的数据
@@ -640,7 +668,7 @@ if 'updated_ocr_df' in locals():
         updated_codes = updated_ocr_df["产品编号(金蝶云)"].tolist()
 
         # 使用更新后的数据进行计算
-        total_weight, container_info = calculate_total_weight(
+        total_weight, container_info, calculation_details = calculate_total_weight(
             updated_product_names,
             updated_quantities,
             cleaned_updated_specifications_names,
@@ -648,77 +676,44 @@ if 'updated_ocr_df' in locals():
             updated_codes
         )
 
-        st.success(f"计算完成！总毛重: {total_weight:.2f} KG")
+        # 将结果存入 session_state
+        st.session_state["container_info"] = container_info
+        st.session_state["total_weight"] = total_weight
+        st.session_state["calculation_details"] = calculation_details
 
-        with st.expander("🚚\u2003柜数计算\u2003🚚"):
-            large_containers, small_containers = allocate_products_to_containers(container_info)
+        # st.session_state["confirmed_data_ready"] = True
 
-            df_container = pd.DataFrame(container_info)
-            # 输出总毛重
-            st.dataframe(df_container)
+        st.session_state["calc_done"] = True
+        if upload_method == "粘贴表格文本":
+            st.session_state["last_confirmed_data"] = table_text  # 将当前处理的table_text保存
 
-            # 存储大柜子和小柜子的详细信息
-            big_containers_info = []
-            small_containers_info = []
+        st.session_state.show_button_cabinet = True
 
-            # 收集大柜子装载范围信息
-            container_count_big = 1
-            for container in large_containers:
-                container_info = f"大柜子{container_count_big}装载范围："
-                container_products_info = []
-                # 遍历大柜子中的每个产品，储存详细信息
-                for product in container:
-                    product_name = product['产品名称']
-                    tray_count = product['托盘数']
-                    single_product_weight = product['单个产品总毛重']
-                    # 格式化输出每个产品的详细信息
-                    product_info = f"产品名字：{product_name}\n托盘数: {tray_count:.2f}\n产品总毛重: {single_product_weight:.3f} KG"
-                    container_products_info.append(product_info)
+    # 在按钮判断之外，根据 calc_done 状态展示结果
+    if st.session_state.get("calc_done", False):
+        # 使用 expander 展示计算过程详情
+        with st.expander("🧮 各产品计算过程 🧮"):
+            for detail in st.session_state["calculation_details"]:
+                st.info(detail)
+        # 计算已完成，展示结果和计算过程
+        st.success(f"计算完成！总毛重: {st.session_state['total_weight']:.2f} KG")
 
-                # 将每个柜子的信息添加到大柜子列表中
-                big_containers_info.append((container_info, container_products_info))
-                container_count_big += 1
+        # # 此时就算之后点击柜重计算按钮，也不会丢失这些信息，因为已经在 session_state 中
+        # if st.session_state.get("confirmed_data_ready", False):
 
-            # 收集小柜子装载范围信息
-            container_count_small = 1
-            for container in small_containers:
-                container_info = f"\n小柜子{container_count_small}装载范围："
-                container_products_info = []
-
-                for product in container:
-                    product_name = product['产品名称']
-                    tray_count = product['托盘数']
-                    single_product_weight = product['单个产品总毛重']
-                    # 格式化输出每个产品的详细信息
-                    product_info = f"产品名字：{product_name}\n托盘数: {tray_count:.2f}\n产品总毛重: {single_product_weight:.3f} KG"
-                    container_products_info.append(product_info)
-
-                # 将每个柜子的信息添加到小柜子列表中
-                small_containers_info.append((container_info, container_products_info))
-                container_count_small += 1
-
-            # 优先展示总共需要的柜子数
-            st.info(f"总共需要{container_count_big - 1}个大柜子，{container_count_small - 1}个小柜子")
-
-            # 展示大柜子和小柜子的详细信息
-
-            for container_info, products_info in big_containers_info:
-                with st.expander(container_info):
-                    for product_info in products_info:
-                        st.info(product_info)
-
-            for container_info, products_info in small_containers_info:
-                with st.expander(container_info):
-                    for product_info in products_info:
-                        st.info(product_info)
-
-        st.divider()
+        if st.session_state.show_button_cabinet:
+            if st.button("柜重计算"):
+                # ### 新增：点击柜重计算前，将cabinet_mode = True
+                st.session_state["cabinet_mode"] = True
+                # st.info(f"st.session_state[cabinet_mode]:{st.session_state['cabinet_mode']}")
+                cabinet(st.session_state["container_info"])
+                st.session_state["cabinet_mode"] = False
 
     # 将 DataFrame 转为字符串，以便在文本区域中显示
     if 'edited_df' in locals():
+        edited_df = st.session_state['edited_ocr_result_df']
         copy_text_df = edited_df.copy()
         copy_text_df["净重"] = float("nan")
-
 
         # 遍历 copy_text_df，更新“净重”列
         for index, row in copy_text_df.iterrows():
@@ -728,7 +723,7 @@ if 'updated_ocr_df' in locals():
             if user_input_id in For_Update_Original_data["产品编号（金蝶云）"].values:
                 # 查找在 For_Update_Original_data 中匹配的行
                 correct_row = \
-                For_Update_Original_data[For_Update_Original_data["产品编号（金蝶云）"] == user_input_id].iloc[0]
+                    For_Update_Original_data[For_Update_Original_data["产品编号（金蝶云）"] == user_input_id].iloc[0]
 
                 # 如果“净重”列存在于 For_Update_Original_data，更新“净重”列
                 if "净重" in correct_row:
