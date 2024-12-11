@@ -133,6 +133,118 @@ def toggle_fragment():
         st.rerun()
 
 
+# 侧边栏简易功能
+with st.sidebar:
+    st.header("简易匹配工具")
+
+    toggle_fragment()
+
+    if not st.session_state["toggle_status"]:  # False 表示输入名称
+
+        sidebar_product_name = st.text_input("输入产品名称", key="nam🧬e_input")
+        sidebar_product_code = st.text_input("输入产品编码", disabled=True, key="code_input")
+    else:  # True 表示输入编码
+        sidebar_product_name = st.text_input("输入产品名称", disabled=True, key="name_input")
+        sidebar_product_code = st.text_input("输入产品编码", key="code_input")
+
+    sidebar_quantity = st.number_input("输入数量", min_value=0, step=1)
+
+    if (sidebar_product_name or sidebar_product_code) and sidebar_quantity > 0:
+
+        # 清洗产品名称或编码
+        cleaned_name = clean_product_name(sidebar_product_name) if sidebar_product_name else None
+        cleaned_code = sidebar_product_code.strip() if sidebar_product_code else None
+
+        # 从匹配文件中读取产品数据
+        matching_file_path = 'cleaned_data.xlsx'  # 需要在同一目录下提供该文件
+        df = pd.read_excel(matching_file_path, sheet_name='境外贸易商品名称')
+
+        product_names = df['型号'].dropna().astype(str).tolist()
+        original_product_names = df['型号'].dropna().astype(str).tolist()  # 假设这个列表包含原始未清洗的名称
+        product_weights = df['毛重（箱/桶）'].dropna().astype(float).tolist()
+        product_codes = df['产品编码(金蝶云)'].dropna().astype(str).tolist()
+
+        # 匹配产品
+        if cleaned_name:
+            match_result = find_best_match(
+                cleaned_name,
+                product_names,
+                product_weights,
+                product_codes,
+            )
+        elif cleaned_code:
+            match_result = find_best_match_by_code(
+                cleaned_code,
+                product_codes,
+                product_weights,
+                product_names,
+                original_product_names,
+            )
+        best_match = match_result["best_match"]
+        all_matches = match_result["all_matches"]
+
+        if best_match["similarity"] < 99:
+            # 提供前 5 个匹配项供选择
+            options = [
+                f"编号：{match['code']} | 产品名称： {For_Update_Original_data.loc[For_Update_Original_data['产品编号（金蝶云）'] == match['code'].strip(), '产品名称'].values[0]} | 相似度: {match['similarity']} | 毛重: {match['weight']}"
+                for match in all_matches
+            ]
+
+            user_selection = st.selectbox(
+                "选择最佳匹配项",
+                options,
+                index=0,
+                key="sidebar_selection"
+            )
+
+            # 使用产品编号匹配
+            original_product_name = user_selection.split("|")[1].strip().replace("产品名称：", "").strip()  # 获取未清洗的产品名称
+            selected_product_code = user_selection.split("|")[0].strip().replace("编号：", "").strip()
+            selected_match = next(
+                (match for match in all_matches if match["code"].strip() == selected_product_code), None
+            )
+
+            product_spec = For_Update_Original_data.loc[
+                For_Update_Original_data['产品编号（金蝶云）'] == selected_match['code'].strip(), '产品规格'].values[0]
+            cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
+
+            if selected_match is None:
+                st.warning("未找到符合条件的匹配项，请检查数据或重新选择。")
+            else:
+                st.info(
+                    f"选择的产品名称: {original_product_name}  \n选择的产品编码: {selected_match['code']}  \n产品规格：{product_spec}  \n毛重: {selected_match['weight']} KG")
+                total_weight = calculate_total_weight_for_sidebar(
+                    product_names=[original_product_name],  # 使用原始产品名称
+                    quantities=[sidebar_quantity],
+                    cleaned_product_specifications_names=[cleaned_spec],  # 传入清洗后的规格
+                    matched_product_weights=[selected_match['weight']],
+                    matched_product_codes=[selected_match['code']]
+                )
+                st.success(f"总毛重: {total_weight:.2f} KG")
+        else:
+            # 使用未清洗的产品名称来展示最佳匹配
+            original_best_product_name = For_Update_Original_data.loc[
+                For_Update_Original_data['产品编号（金蝶云）'] == best_match['code'].strip(), '产品名称'].values[0]
+            product_spec = For_Update_Original_data.loc[
+                For_Update_Original_data['产品编号（金蝶云）'] == best_match['code'].strip(), '产品规格'].values[0]
+            cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
+
+            # 转义，避免文字变成斜体
+            original_best_product_name_escaped = original_best_product_name.replace("*", "\\*")
+            product_spec_escaped = product_spec.replace("*", "\\*")
+            st.info(
+                f"最佳匹配项名称: {original_best_product_name_escaped}  \n最佳匹配项编码: {best_match['code']}  \n产品规格：{product_spec_escaped}  \n毛重: {best_match['weight']} KG")
+
+            total_weight = calculate_total_weight_for_sidebar(
+                product_names=[original_best_product_name],  # 使用原始产品名称
+                quantities=[sidebar_quantity],
+                cleaned_product_specifications_names=[cleaned_spec],  # 传入清洗后的规格
+                matched_product_weights=[best_match['weight']],
+                matched_product_codes=[best_match['code']]
+            )
+            st.success(f"总毛重: {total_weight:.2f} KG")
+
+
 upload_method = st.radio("请选择上传方式", ("图片上传", "粘贴表格文本"))
 
 if upload_method == "图片上传":
