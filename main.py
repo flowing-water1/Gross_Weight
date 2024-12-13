@@ -55,7 +55,7 @@ def reset_calculation_states():
             del st.session_state[key]
 
 
-@st.dialog("🚚\u2003柜数计算\u2003🚚", width="large")
+@st.dialog("🚚\u2003柜数计算\u2003🚚（暂时有问题）", width="large")
 def cabinet(container_info):
     best_solution, best_fitness = run_genetic_algorithm(container_info, config)
 
@@ -791,7 +791,7 @@ if 'edited_ocr_result_df' in st.session_state:
             # if st.session_state.get("confirmed_data_ready", False):
 
             if st.session_state.show_button_cabinet:
-                if st.button("🚛柜重计算🚛"):
+                if st.button("🚛柜重计算🚛（暂时有问题）"):
                     # ### 新增：点击柜重计算前，将cabinet_mode = True
                     st.session_state["cabinet_mode"] = True
 
