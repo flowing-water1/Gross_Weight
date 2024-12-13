@@ -426,7 +426,7 @@ elif upload_method == "✍粘贴文本✍":
 if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.session_state:
     if upload_method == "📷图片上传📷":
         if uploaded_image:
-            st.image(uploaded_image, caption='上传的图片', use_column_width=True)
+            st.image(uploaded_image, caption='上传的图片', use_container_width=True)
             ocr_result_df = st.session_state['ocr_result_df_image']
             image_files = st.session_state.get('image_files', [])
             xlsx_file_path = st.session_state['xlsx_file_path']
@@ -437,7 +437,7 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
             for image_file in image_files:
                 if os.path.exists(image_file):
                     expander.image(image_file, caption=f"识别结果: {os.path.basename(image_file)}",
-                                   use_column_width=True)
+                                   use_container_width=True)
 
             # 从 session_state 中读取 OCR 结果
             markdown_col1, markdown_col2, markdown_col3 = st.columns([1.3, 1, 1])
@@ -765,7 +765,6 @@ if 'edited_ocr_result_df' in st.session_state:
                 updated_codes
             )
 
-            st.info(container_info)
             # 将结果存入 session_state
             st.session_state["container_info"] = container_info
             st.session_state["total_weight"] = total_weight

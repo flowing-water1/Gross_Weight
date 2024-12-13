@@ -904,14 +904,13 @@ def allocate_cabinets_to_types(solution, small_container_limit_trays=20, small_c
             st.info(f"🈚{cabinet_label}◽◽◽◽")
 
     def display_total_table(large_cabinets, small_cabinets):
-        total_col1, total_col2, total_col3 = st.columns([1, 1.5, 1])
+
         html_table = create_html_table(large_cabinets, small_cabinets)
-        with total_col1:
-            st.header("📦 总表")
-        with total_col3:
-            st_copy_to_clipboard(text=html_table, before_copy_label="🚚复制总表🚚", after_copy_label="✅复制成功")
-        st.divider()
+
+        st.header("📦 总表")
+
         st.markdown(html_table, unsafe_allow_html=True)
+        st_copy_to_clipboard(text=html_table, before_copy_label="🚚复制总表🚚", after_copy_label="✅复制成功")
 
     # 显示大柜子信息（原有展示）
     display_original_cabinets(large_containers, "📦 大柜子列表", "大柜子")
