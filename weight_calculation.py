@@ -39,6 +39,7 @@ def calculate_total_weight(product_names, quantities, cleaned_product_specificat
     calculation_details = []  # 新增，用于存储展示用的信息字符串
 
     for i in range(len(matched_product_weights)):
+        product_codes = matched_product_codes[i]
         quantity = Decimal(quantities[i])
         spec = int(cleaned_product_specifications_names[i])
         matched_weight = Decimal(matched_product_weights[i])
@@ -56,7 +57,9 @@ def calculate_total_weight(product_names, quantities, cleaned_product_specificat
         total_weight += single_product_weight
 
         container_info.append({
+            "产品编号": product_codes,
             "产品名称": product_names[i],
+            "产品数量": quantity,
             "每托重量": weight_per_package,
             "托盘数": tray_count,
             "单个产品总毛重": single_product_weight
