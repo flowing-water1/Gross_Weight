@@ -346,6 +346,7 @@ def mutate(solution, mutation_rate, config):
     :return: 变异后的解决方案
     """
     mutated_solution = copy.deepcopy(solution)
+    mutation_performed = 0  # 初始化为未进行变异
 
     if random.random() < mutation_rate:
         mutation_type = random.choice(['swap', 'move', 'merge', 'split', 'reallocate', 'adjust'])
@@ -501,10 +502,12 @@ def mutate(solution, mutation_rate, config):
                     # 创建新柜子
                     mutated_solution.append([product])
 
+        mutation_performed = 1  # 标记为进行了变异
+
         # 修复柜子
         mutated_solution = fix_cabinets(mutated_solution)
 
-    return mutated_solution
+    return mutated_solution, mutation_performed
 
 
 def fix_cabinets(solution):
@@ -550,11 +553,20 @@ def fix_cabinets(solution):
 
 
 def apply_mutation(population, mutation_rate):
+    """
+    对种群中的每个解决方案应用变异操作，并统计总的变异次数。
+
+    :param population: 当前种群列表
+    :param mutation_rate: 变异发生的概率
+    :return: (变异后的种群, 总变异次数)
+    """
     mutated_population = []
+    total_mutations = 0
     for solution in population:
-        mutated_solution = mutate(solution, mutation_rate, config)
+        mutated_solution, mutation = mutate(solution, mutation_rate, config)
         mutated_population.append(mutated_solution)
-    return mutated_population
+        total_mutations += mutation
+    return mutated_population, total_mutations
 
 
 #
@@ -604,6 +616,9 @@ def tournament_selection(population, fitness_values, tournament_size):
 def run_genetic_algorithm(products, config):
     population = generate_initial_population(products, config["POPULATION_SIZE"])
 
+    # 初始化变异计数
+    total_mutations = 0
+
     # 打印初始种群
     for idx, solution in enumerate(population, start=1):
         print(f"方案 {idx}:")
@@ -649,7 +664,8 @@ def run_genetic_algorithm(products, config):
             offspring = offspring[:config["POPULATION_SIZE"]]
 
         # 变异
-        mutated_offspring = apply_mutation(offspring, config["MUTATION_RATE"])
+        mutated_offspring, mutations = apply_mutation(offspring, config["MUTATION_RATE"])
+        total_mutations += mutations
 
         # 修复并评估适应度
         population = mutated_offspring
@@ -682,7 +698,7 @@ def run_genetic_algorithm(products, config):
                 print(f"    产品 {product['id']}, 托盘数: {product['trays']}, 重量: {product['weight']}kg")
             print()
 
-        return best_solution, best_fitness
+        return best_solution, best_fitness, config["NUM_GENERATIONS"], total_mutations
 
 
 import math
@@ -872,7 +888,7 @@ def allocate_cabinets_to_types(solution, small_container_limit_trays=20, small_c
         # 添加大柜子
         add_cabinets_to_html(large_cabinets, "40HQ")
         # 添加小柜子
-        add_cabinets_to_html(small_cabinets, "20HQ")
+        add_cabinets_to_html(small_cabinets, "20GP")
 
         html += """
                 </tbody>
@@ -881,13 +897,13 @@ def allocate_cabinets_to_types(solution, small_container_limit_trays=20, small_c
         """
         return html
 
-    def display_original_cabinets(cabinets, cabinet_label, cabinet_type):
+    def display_original_cabinets(cabinets, cabinet_label, no_cabinet_label, cabinet_type):
         """
         显示柜子信息，使用原有的st.header和st.expander展示。
 
         :param cabinets: 柜子列表
         :param cabinet_label: 表格标题
-        :param cabinet_type: 柜型 ("40HQ" 或 "20HQ")
+        :param cabinet_type: 柜型 ("40HQ" 或 "20GP")
         """
         st.header(cabinet_label)
         if cabinets:
@@ -901,7 +917,7 @@ def allocate_cabinets_to_types(solution, small_container_limit_trays=20, small_c
                     display_df = create_display_table(cabinet)
                     st.dataframe(display_df, use_container_width=True, hide_index=True)
         else:
-            st.info(f"🈚{cabinet_label}◽◽◽◽")
+            st.info(f"🈚{no_cabinet_label}◽◽◽◽")
 
     def display_total_table(large_cabinets, small_cabinets):
 
@@ -913,12 +929,12 @@ def allocate_cabinets_to_types(solution, small_container_limit_trays=20, small_c
         st_copy_to_clipboard(text=html_table, before_copy_label="🚚复制总表🚚", after_copy_label="✅复制成功")
 
     # 显示大柜子信息（原有展示）
-    display_original_cabinets(large_containers, "📦 大柜子列表", "大柜子")
+    display_original_cabinets(large_containers, "📦 大柜子列表", "大柜子", "大柜子")
 
     st.divider()
 
     # 显示小柜子信息（原有展示）
-    display_original_cabinets(small_containers, "📦 小柜子列表", "小柜子")
+    display_original_cabinets(small_containers, "📦 小柜子列表", "小柜子", "小柜子")
 
     st.divider()
 
