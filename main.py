@@ -854,4 +854,4 @@ else:
     question_tutorials()
 
     sac.alert(label=None, description='🤔正在等待数据输入◽◽◽', size='xl', radius=20, color='warning', banner=True,
-              icon=sac.AntIcon(name='LoadingOutlined', size=50, color=None), closable=True)
+              icon=sac.AntIcon(name='LoadingOutlined', size=50, color=None))
