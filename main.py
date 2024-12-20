@@ -3,8 +3,8 @@ import os
 import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
-# from container import run_genetic_algorithm, allocate_cabinets_to_types, config
-from temp import run_genetic_algorithm, allocate_cabinets_to_types, config
+from container import run_genetic_algorithm, allocate_cabinets_to_types, config
+# from temp import run_genetic_algorithm, allocate_cabinets_to_types, config
 from weight_calculation import calculate_total_weight, calculate_total_weight_for_sidebar
 from data_extraction import extract_product_and_quantity
 from data_cleaning import clean_product_name, clean_product_specifications
@@ -12,7 +12,8 @@ from matching import find_best_match, find_best_match_by_code
 from original_data import For_Update_Original_data
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from st_copy_to_clipboard import st_copy_to_clipboard
-from container_calculation import allocate_products_to_containers
+
+import streamlit_nested_layout
 from split_pallets import process_container_info
 import streamlit_toggle as tog
 import base64
@@ -24,7 +25,7 @@ from tutorials import image_tutorial, text_tutorials, question_tutorials, side_b
 st.set_page_config(layout="wide", initial_sidebar_state='collapsed')
 title_col1, title_col2, title_col3 = st.columns([0.38, 1.1, 0.3])
 with title_col2:
-    title_help = "👻本网页用于货重计算和装柜计算，欢迎使用👻"
+    title_help = "👻由流水开发，目前版本：2.4👻"
     st.title("🚚产品重量统计与柜重计算🚢", help=title_help)
 
 # 初始化变量，确保它们在任何情况下都被定义
@@ -51,20 +52,12 @@ def reset_calculation_states():
             del st.session_state[key]
 
 
-@st.dialog("🚚\u2003柜数计算\u2003🚚（待改进）", width="large")
+@st.dialog("🚚\u2003柜数计算\u2003🚚", width="large")
 def cabinet(container_info):
     # best_solution, best_fitness = run_genetic_algorithm(container_info, config)
-
-    best_solution, best_fitness, generations_run, total_mutations = run_genetic_algorithm(container_info, config)
-
-    st.success(
-        f"✅ 计算完成！ 🧐\n\n"
-        f"🔄 本次迭代次数: {generations_run} 次\n\n"
-        f"🧬 本次变异次数: {total_mutations} 次\n\n"
-        f"🏆 最终适应度为: {best_fitness:.4f} "
-    )
-    # 如果需要在 Streamlit 中展示最优方案情况
-    allocate_cabinets_to_types(best_solution)
+    print(container_info)
+    best_solution, best_fitness, generations_run, stats = run_genetic_algorithm(container_info, config)
+    allocate_cabinets_to_types(best_solution, best_fitness, generations_run, stats)
 
 
 @st.fragment
@@ -793,7 +786,7 @@ if 'edited_ocr_result_df' in st.session_state:
             # if st.session_state.get("confirmed_data_ready", False):
 
             if st.session_state.show_button_cabinet:
-                if st.button("🚛柜重计算🚛(待改进)"):
+                if st.button("🚛柜重计算🚛"):
                     # ### 新增：点击柜重计算前，将cabinet_mode = True
                     st.session_state["cabinet_mode"] = True
 
