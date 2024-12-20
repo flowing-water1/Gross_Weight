@@ -4,7 +4,6 @@ import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
 from container import run_genetic_algorithm, allocate_cabinets_to_types, config
-# from temp import run_genetic_algorithm, allocate_cabinets_to_types, config
 from weight_calculation import calculate_total_weight, calculate_total_weight_for_sidebar
 from data_extraction import extract_product_and_quantity
 from data_cleaning import clean_product_name, clean_product_specifications
