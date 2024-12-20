@@ -3,7 +3,12 @@ import random
 import copy
 from collections import defaultdict
 import streamlit as st
+from st_copy_to_clipboard import st_copy_to_clipboard
+from html import escape
+import pandas as pd
+from original_data import For_Update_Original_data
 import math
+import streamlit_antd_components as sac
 
 config = {
     "MAX_TRAYS": 40,
@@ -24,6 +29,30 @@ config = {
     "ELITISM": True,
     "PATIENCE": 20
 }
+
+#
+products = [
+    {"id": "Tellus S2 VX 46 1209L", "name": "Tellus S2 VX 46 1209L", "每托重量": 791.4159999999999, "trays": 13.0,
+     "weight": 10288.408},
+    {"id": "Omala S4 GXV 220 1209L", "name": "Omala S4 GXV 220 1209L", "每托重量": 798.1039999999999, "trays": 1.0,
+     "weight": 798.1039999999999},
+    {"id": "Omala S4 GX 220 1209L", "name": "Omala S4 GX 220 1209L", "每托重量": 812.3159999999999, "trays": 5.0,
+     "weight": 4061.5799999999995},
+    {"id": "Gadus S2 V220 2 118KG", "name": "Gadus S2 V220 2 118KG", "每托重量": 491.72, "trays": 10.0,
+     "weight": 4917.200000000001},
+    {
+        "id": "Omala S2 GX 100 1*209L",
+        "name": "Omala S2 GX 100 1*209L",
+        "每托重量": 820.68,
+        "trays": 3,
+        "weight": 2462.03
+    },
+
+]
+
+
+# with open("container_info_new.json", "r", encoding="utf-8") as file:
+#     container_info_new = json.load(file)
 
 
 # 1.初代方案生成（目前只使用贪心算法）
@@ -359,7 +388,40 @@ def perform_crossover(population, fitness_values, products, config, num_offsprin
     return offspring
 
 
+# # 进行交叉操作，生成新的子代
+# offspring = perform_crossover(initial_population, [fitness for _, fitness in fitness_values], num_offspring=10)
+#
+# # 打印生成的子代方案
+# for idx, solution in enumerate(offspring, start=1):
+#     print(f"交叉子代方案 {idx}:")
+#     for cabinet_idx, cabinet in enumerate(solution, start=1):
+#         total_trays = sum(p["trays"] for p in cabinet)
+#         total_weight = sum(p["weight"] for p in cabinet)
+#         print(f"  柜子 {cabinet_idx}: 托盘数: {total_trays}, 重量: {total_weight}kg")
+#         for product in cabinet:
+#             print(f"    产品 {product['id']}, 托盘数: {product['trays']}, 重量: {product['weight']}kg")
+#     print("\n")
+
+
+#
+# # 为初始种群重新计算适应度
+# fitness_values = []
+# for idx, solution in enumerate(offspring, start=1):
+#     fitness = calculate_fitness(solution)
+#     fitness_values.append((idx, fitness))
+#     print(f"交叉方案 {idx} 的适应度: {fitness:.4f}")
+#
+# # 打印适应度最高的方案
+# best_solution_idx = max(fitness_values, key=lambda x: x[1])[0]
+# print(f"\n交叉环节适应度最高的方案是方案 {best_solution_idx}\n")
+
+
 # 4.变异
+import random
+import copy
+
+import random
+import copy
 
 
 def mutate(solution, fitness, current_generation, max_generations, config, fitness_stats):
@@ -911,199 +973,9 @@ def run_genetic_algorithm(products, config):
         for product in cabinet:
             print(f"    产品 {product['id']}, 托盘数: {product['trays']}, 重量: {product['weight']}kg")
         print("\n")
-        final_solution, if_start_messages, post_process_messages, post_change_message = post_process_solution(
-            best_solution, config)
-        final_fitness = calculate_fitness(final_solution, config)
 
-        return final_solution, final_fitness, generation, stats, if_start_messages, post_process_messages, post_change_message
+    return best_solution, best_fitness, generation, stats
 
-
-def post_process_solution(solution, config):
-    """
-    后处理：如果有2个以上小柜子，尝试将小柜子的产品通过整数托拆分的方式放入已有大柜子中。
-    全部子产品放入结束后，进行产品合并以减少冗余。
-
-    拆分规则与分配策略同之前的版本。
-
-    新增步骤：
-    - 在将全部子产品分配完成后，对大柜子进行合并：
-      根据 (产品编号, name) 作为键合并相同产品行，重新计算托盘数、重量、产品数量。
-
-    注意：
-    - 如果产品有"产品数量"为Decimal或字符串，请在分配时先转为float进行计算，最终展示可保留为float或整形。
-    """
-
-    # 分离大柜子和小柜子
-    large_containers = []
-    small_containers = []
-    for cab in solution:
-        total_trays = sum(p["trays"] for p in cab)
-        total_weight = sum(p["weight"] for p in cab)
-        if total_trays <= config["SMALL_MAX_TRAYS"] and total_weight <= config["SMALL_MAX_WEIGHT"]:
-            small_containers.append(cab)
-        else:
-            large_containers.append(cab)
-
-    # 保存原始大柜子数量
-    num_big = len(large_containers)
-    # 判断小柜子数量
-    num_small = len(small_containers)
-    if num_small < 2:
-        # 后处理未启动
-        if_start_messages = f"当前小柜子数量为{num_small}个，小于2个，无需启动后处理方案。"
-        return solution, if_start_messages, "后处理未启动，无需优化。", ""
-    else:
-        # 后处理启动
-        if_start_messages = f"当前小柜子数量为{num_small}个，启动后处理方案，优化装柜。"
-
-    # 将所有小柜子产品汇总
-    small_products = []
-    for cab in small_containers:
-        small_products.extend(cab)
-
-    # 将"产品数量"转化为float，确保后续计算方便
-    def to_float(x):
-        if isinstance(x, str):
-            try:
-                return float(x)
-            except:
-                return 0.0
-        elif isinstance(x, (int, float)):
-            return float(x)
-        else:
-            return float(x) if x is not None else 0.0
-
-    # 生成子产品列表
-    subproducts = []
-    for product in small_products:
-        trays = product["trays"]
-        per_tray_weight = product["每托重量"]
-        product_quantity = to_float(product["产品数量"])  # 转为float方便计算
-        total_trays = trays
-        # 每托的产品数量
-        if total_trays > 0:
-            quantity_per_tray = product_quantity / total_trays
-        else:
-            # 若 total_trays == 0理应不存在这种情况，但以防万一
-            quantity_per_tray = product_quantity
-
-        if trays < 1:
-            # fractional_subproduct
-            frac_sub = copy.deepcopy(product)
-            frac_sub["产品数量"] = quantity_per_tray * trays
-            # weight and trays remain the fractional
-            subproducts.append(frac_sub)
-        else:
-            trays_int = math.floor(trays)
-            trays_frac = trays - trays_int
-            # 整数部分拆分为多个1托子产品
-            for _ in range(trays_int):
-                sub = copy.deepcopy(product)
-                sub["trays"] = 1
-                sub["weight"] = per_tray_weight
-                sub["产品数量"] = quantity_per_tray * 1
-                subproducts.append(sub)
-            # fractional部分
-            if trays_frac > 0:
-                frac_sub = copy.deepcopy(product)
-                frac_sub["trays"] = trays_frac
-                frac_sub["weight"] = trays_frac * per_tray_weight
-                frac_sub["产品数量"] = quantity_per_tray * trays_frac
-                subproducts.append(frac_sub)
-
-    # 为大柜子添加剩余容量信息
-    for cab in large_containers:
-        cab_total_trays = sum(p["trays"] for p in cab)
-        cab_total_weight = sum(p["weight"] for p in cab)
-        cab_trays_left = config["MAX_TRAYS"] - cab_total_trays
-        cab_weight_left = config["MAX_WEIGHT"] - cab_total_weight
-        cab.append({"_remaining_trays": cab_trays_left, "_remaining_weight": cab_weight_left})
-
-    def place_subproduct_in_existing_cabinets(sp, cabinets, config):
-        for cab in cabinets:
-            cab_remain = cab[-1]
-            if cab_remain["_remaining_trays"] >= sp["trays"] and cab_remain["_remaining_weight"] >= sp["weight"]:
-                cab.insert(-1, sp)
-                cab_remain["_remaining_trays"] -= sp["trays"]
-                cab_remain["_remaining_weight"] -= sp["weight"]
-                return True
-        return False
-
-    leftover_subproducts = []
-    for sp in subproducts:
-        placed = place_subproduct_in_existing_cabinets(sp, large_containers, config)
-        if not placed:
-            leftover_subproducts.append(sp)
-
-    # 开新大柜子装载剩余子产品，直到全部放入
-    while leftover_subproducts:
-        new_cabinet = []
-        new_cabinet.append({"_remaining_trays": config["MAX_TRAYS"], "_remaining_weight": config["MAX_WEIGHT"]})
-        large_containers.append(new_cabinet)
-
-        still_leftover = []
-        for sp in leftover_subproducts:
-            placed = place_subproduct_in_existing_cabinets(sp, [new_cabinet], config)
-            if not placed:
-                still_leftover.append(sp)
-        leftover_subproducts = still_leftover
-
-        # 理论上如果有更多剩余，又再开下一个大柜子，如此循环，直到全部分完。
-
-    # 清除容量信息字典
-    for cab in large_containers:
-        if len(cab) > 0 and "_remaining_trays" in cab[-1]:
-            cab.pop()
-
-    # 合并同一柜子内相同(产品编号, name)的产品行
-    def merge_cabinet_products(cab):
-        merged = {}
-        for p in cab:
-            key = (p["产品编号"], p["name"])
-            if key not in merged:
-                merged[key] = {
-                    "产品编号": p["产品编号"],
-                    "id": p["id"],
-                    "name": p["name"],
-                    "产品数量": to_float(p["产品数量"]),
-                    "每托重量": p["每托重量"],
-                    "trays": p["trays"],
-                    "weight": p["weight"]
-                }
-            else:
-                merged[key]["产品数量"] += to_float(p["产品数量"])
-                merged[key]["trays"] += p["trays"]
-                merged[key]["weight"] += p["weight"]
-        # 更新每托重量
-        # 每托重量 = 总重量 / 总托盘数（若总托盘数>0，否则保持原值）
-        final_products = []
-        for k, v in merged.items():
-            if v["trays"] > 0:
-                v["每托重量"] = v["weight"] / v["trays"]
-            else:
-                # trays=0，不应该出现这种情况，但以防万一
-                v["每托重量"] = v["weight"]
-            final_products.append(v)
-        return final_products
-
-    # 对所有大柜子进行合并清洗
-    final_large_containers = []
-    for cab in large_containers:
-        merged_cab = merge_cabinet_products(cab)
-        final_large_containers.append(merged_cab)
-
-    # 后处理完成消息
-    post_process_message = "后处理完成，成功优化小柜子数量。"
-
-    # 将数字用红色显示
-    # 使用span标签并指定inline样式覆盖父级颜色
-    red_num_big = f"<span style='color:red;'>{num_big}</span>"
-    red_num_small = f"<span style='color:red;'>{num_small}</span>"
-    red_final = f"<span style='color:red;'>{len(large_containers)}</span>"
-
-    post_change_message = f"🔨由{red_num_big}个大柜子 + {red_num_small}个小柜子 ➡ {red_final}个大柜子"
-
-    return final_large_containers, if_start_messages, post_process_message, post_change_message
 
 #
 # best_solution, best_fitness, generation, stats = run_genetic_algorithm(products, config)
@@ -1121,3 +993,336 @@ def post_process_solution(solution, config):
 #     f"\n\n🏆 最终适应度为: {best_fitness:.4f} "
 #
 # )
+
+
+def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats):
+    """
+    将分配出的柜子分类为大柜子和小柜子，并基于产品名称查询规格、净重、毛重。
+
+    :param best_fitness: 最终适应度
+    :param stats: 迭代过程中的各项数据记录
+    :param generations_run: 迭代次数
+    :param solution: 最优方案中的柜子列表
+    :param small_container_limit_trays: 小柜子的托盘数限制
+    :param small_container_limit_weight: 小柜子的重量限制（kg）
+    :return: 大柜子列表和小柜子列表
+    """
+    large_containers = []
+    small_containers = []
+    small_container_limit_trays = 20
+    small_container_limit_weight = 21000
+
+    for cabinet in solution:
+        total_trays = sum(p["trays"] for p in cabinet)
+        total_weight = sum(p["weight"] for p in cabinet)
+
+        if total_trays <= small_container_limit_trays and total_weight <= small_container_limit_weight:
+            small_containers.append(cabinet)
+        else:
+            large_containers.append(cabinet)
+
+    def get_product_details(product):
+        """
+        根据产品名称查询规格、净重、毛重。
+
+        :param product: 产品字典
+        :return: 包含规格、净重、毛重的新字典
+        """
+        name = product.get("产品编号")
+        # 查找对应的产品信息
+        match = For_Update_Original_data[For_Update_Original_data["产品编号（金蝶云）"] == name]
+        if not match.empty:
+            product_details = match.iloc[0]
+            return {
+                "规格": product_details["产品规格"],
+                "毛重 (kg)": product_details["毛重（箱/桶）"]
+            }
+        else:
+            # 如果找不到匹配的产品，返回原有信息或默认值
+            return {
+                "规格": "未知",
+                "毛重 (kg)": "未知"
+            }
+
+    def create_display_table(cabinet):
+        """
+        创建用于展示的产品信息表格，包含规格、净重、毛重。
+
+        :param cabinet: 柜子中的产品列表
+        :return: pandas DataFrame
+        """
+        display_data = []
+        for product in cabinet:
+            details = get_product_details(product)
+            # 格式化数值，限制小数位数
+            try:
+                毛重 = f"{float(details['毛重 (kg)']):.2f}"
+            except (ValueError, TypeError):
+                毛重 = details['毛重 (kg)']
+            try:
+                总重量 = f"{float(product.get('weight', 0)):.2f}"
+            except (ValueError, TypeError):
+                总重量 = product.get('weight', '未知')
+
+            display_data.append({
+                "编号": product.get("产品编号"),
+                "产品名称": product.get("name"),
+                "规格": details["规格"],
+                "数量": product.get("产品数量"),
+                "毛重 (kg)": 毛重,
+                "托盘数": product.get("trays"),
+                "总重量 (kg)": 总重量
+            })
+        return pd.DataFrame(display_data)
+
+    def create_html_table(large_cabinets, small_cabinets):
+        """
+        创建用于展示的所有柜子的HTML表格，包含合并单元格的“柜型”列。
+
+        :param large_cabinets: 大柜子列表
+        :param small_cabinets: 小柜子列表
+        :return: HTML 字符串
+        """
+        html = """
+        <style>
+            .cabinet-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 20px;
+                table-layout: auto;
+            }
+            .cabinet-table th, .cabinet-table td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: center;
+                vertical-align: middle;
+                word-wrap: break-word;
+                max-width: 150px;
+            }
+            .cabinet-table th {
+                background-color: #f2f2f2;
+                position: sticky;
+                top: 0;
+                z-index: 1;
+            }
+            .table-container {
+                overflow-x: auto;
+                max-height: 600px;
+            }
+            /* 优化表格字体和间距 */
+            .cabinet-table {
+                font-size: 14px;
+            }
+            .cabinet-table th, .cabinet-table td {
+                padding: 10px;
+            }
+        </style>
+        <div class="table-container">
+            <table class="cabinet-table">
+                <thead>
+                    <tr>
+                        <th>编号</th>
+                        <th>产品名称</th>
+                        <th>规格</th>
+                        <th>数量</th>
+                        <th>毛重 (kg)</th>
+                        <th>托盘数</th>
+                        <th>总重量 (kg)</th>
+                        <th>柜型</th>
+                    </tr>
+                </thead>
+                <tbody>
+        """
+
+        def add_cabinets_to_html(cabinets, cabinet_type):
+            nonlocal html
+            for cabinet in cabinets:
+                display_data = []
+                for product in cabinet:
+                    details = get_product_details(product)
+                    # 格式化数值，限制小数位数
+                    try:
+                        毛重 = f"{float(details['毛重 (kg)']):.2f}"
+                    except (ValueError, TypeError):
+                        毛重 = details['毛重 (kg)']
+                    try:
+                        总重量 = f"{float(product.get('weight', 0)):.2f}"
+                    except (ValueError, TypeError):
+                        总重量 = product.get('weight', '未知')
+
+                    display_data.append({
+                        "编号": product.get("产品编号"),
+                        "产品名称": product.get("name"),
+                        "规格": details["规格"],
+                        "数量": product.get("产品数量"),
+                        "毛重 (kg)": 毛重,
+                        "托盘数": product.get("trays"),
+                        "总重量 (kg)": 总重量
+                    })
+                num_products = len(display_data)
+                for idx, row in enumerate(display_data):
+                    html += "<tr>"
+                    html += f"<td>{escape(str(row['编号']))}</td>"
+                    html += f"<td>{escape(str(row['产品名称']))}</td>"
+                    html += f"<td>{escape(str(row['规格']))}</td>"
+                    html += f"<td>{escape(str(row['数量']))}</td>"
+                    html += f"<td>{escape(str(row['毛重 (kg)']))}</td>"
+                    html += f"<td>{escape(str(row['托盘数']))}</td>"
+                    html += f"<td>{escape(str(row['总重量 (kg)']))}</td>"
+                    if idx == 0:
+                        html += f"<td rowspan='{num_products}'>{escape(cabinet_type)}</td>"
+                    html += "</tr>"
+
+        # 添加大柜子
+        add_cabinets_to_html(large_cabinets, "40HQ")
+        # 添加小柜子
+        add_cabinets_to_html(small_cabinets, "20GP")
+
+        html += """
+                </tbody>
+            </table>
+        </div>
+        """
+        return html
+
+    def display_original_cabinets(cabinets, cabinet_label, no_cabinet_label, cabinet_type):
+        """
+        显示柜子信息，使用原有的st.header和st.expander展示。
+
+        :param no_cabinet_label: 没有柜子时的显示信息
+        :param cabinets: 柜子列表
+        :param cabinet_label: 表格标题
+        :param cabinet_type: 柜型 ("40HQ" 或 "20GP")
+        """
+        st.header(cabinet_label)
+        if cabinets:
+            for idx, cabinet in enumerate(cabinets, start=1):
+                total_trays = sum(p["trays"] for p in cabinet)
+                total_weight = sum(p["weight"] for p in cabinet)
+                rounded_trays = math.ceil(total_trays)  # 向上取整托盘数
+
+                with st.expander(
+                        f"📦 {cabinet_type} {idx} \u2001 🧰 托盘数: {rounded_trays} \u2001 🛒 重量: {total_weight:.2f}kg"):
+                    display_df = create_display_table(cabinet)
+                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+        else:
+            st.info(f"🈚{no_cabinet_label}◽◽◽◽")
+
+    def display_total_table(large_cabinets, small_cabinets):
+
+        html_table = create_html_table(large_cabinets, small_cabinets)
+
+        st.header("📦 总表")
+
+        st.markdown(html_table, unsafe_allow_html=True)
+        st_copy_to_clipboard(text=html_table, before_copy_label="🚚复制总表🚚", after_copy_label="✅复制成功")
+
+    max_length = max(len(mutation_type) for mutation_type in stats['mutation_type_counts'].keys())
+
+    st.markdown("""
+        <style>
+        .success-box-top {
+            background-color: #E8F9EE;
+            color: #1D7E64;
+            padding: 5px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            font-family: Arial, sans-serif;
+        }
+        .success-box-middle {
+            background-color: #E8F9EE;
+            color: #1D7E64;
+            padding: 5px;
+            font-family: Arial, sans-serif;
+        }
+        .success-box-bottom {
+            background-color: #E8F9EE;
+            color: #1D7E64;
+            padding: 5px;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            font-family: Arial, sans-serif;
+        }
+        .center-text {
+            text-align: center;
+
+        }
+        .left-right {
+            display: flex;
+            justify-content: space-between;
+
+        }
+        .left, .right {
+            width: 26%;
+        }
+        .mutation-list {
+            margin-top: 8px;
+
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # 模拟st.success的效果
+    st.markdown(f"""
+        <div class="success-box-top">
+            <div class="center-text">
+                <strong> ✅ 计算完成！ 🧐 </strong>
+            </div>
+        </div>
+
+        <div class="success-box-middle">
+            <div class="left-right">
+                <div class="left">
+                    🔄 本次迭代次数: {generations_run + 1} 次<br>
+                    🧬 本次变异次数: {stats['total_mutations']} 次
+                </div>
+                <div class="right">
+                    🔀 本次交叉次数: {stats['total_crossovers']} 次<br>
+                    🏁 总锦标赛次数: {stats['total_tournaments']} 次
+                </div>
+            </div>
+        </div>
+
+        <div class="success-box-middle">
+            <div class="center-text">
+                🥇 本次运行中使用的变异类型分布:
+                <div class="mutation-list">
+                    {'<br>'.join([f"- {mutation_type.ljust(max_length)} : {count} 次" for mutation_type, count in stats['mutation_type_counts'].items()])}
+                </div>
+            </div>
+        </div>
+
+        <div class="success-box-middle">
+            <div class="center-text">
+                🏆 最终适应度为:<strong> {best_fitness:.4f} <br> </strong>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown(f"""
+        <div class="success-box-bottom">
+            <div class="left-right">
+                <div class="left">
+                    <strong>📦 大柜子数量: {len(large_containers)} 个<br> </strong>
+                </div>
+                <div class="right">
+                    <strong>📦 小柜子数量: {len(small_containers)} 个<br> </strong>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+
+
+    # 显示大柜子信息（原有展示）
+    display_original_cabinets(large_containers, "📦 大柜子列表", "大柜子", "大柜子")
+
+    st.divider()
+
+    # 显示小柜子信息（原有展示）
+    display_original_cabinets(small_containers, "📦 小柜子列表", "小柜子", "小柜子")
+
+    st.divider()
+
+    # 显示总表（新增展示）
+    display_total_table(large_containers, small_containers)
