@@ -7,3 +7,4 @@ lxml==5.3.0
 streamlit_nested_layout
 streamlit-antd-components
 streamlit-toggle-switch-diy
+streamlit-on-Hover-tabs
