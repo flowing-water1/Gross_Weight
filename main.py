@@ -3,7 +3,9 @@ import os
 import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
-from container import run_genetic_algorithm, allocate_cabinets_to_types, config
+from container import run_genetic_algorithm, config
+from container_display import allocate_cabinets_to_types
+# from temp import run_genetic_algorithm, allocate_cabinets_to_types, config
 from weight_calculation import calculate_total_weight, calculate_total_weight_for_sidebar
 from data_extraction import extract_product_and_quantity
 from data_cleaning import clean_product_name, clean_product_specifications
@@ -11,10 +13,11 @@ from matching import find_best_match, find_best_match_by_code
 from original_data import For_Update_Original_data
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from st_copy_to_clipboard import st_copy_to_clipboard
+from st_on_hover_tabs import on_hover_tabs  # 导入 st_on_hover_tabs 控件
 
 import streamlit_nested_layout
 from split_pallets import process_container_info
-import streamlit_toggle as tog
+import streamlit_toggle_diy  as tog
 import base64
 import requests
 from io import StringIO
@@ -24,7 +27,7 @@ from tutorials import image_tutorial, text_tutorials, question_tutorials, side_b
 st.set_page_config(layout="wide", initial_sidebar_state='collapsed')
 title_col1, title_col2, title_col3 = st.columns([0.38, 1.1, 0.3])
 with title_col2:
-    title_help = "👻由流水开发，目前版本：2.4👻"
+    title_help = "👻由流水开发，目前版本：2.6👻"
     st.title("🚚产品重量统计与柜重计算🚢", help=title_help)
 
 # 初始化变量，确保它们在任何情况下都被定义
@@ -51,28 +54,44 @@ def reset_calculation_states():
             del st.session_state[key]
 
 
+
 @st.dialog("🚚\u2003柜数计算\u2003🚚", width="large")
 def cabinet(container_info):
     # best_solution, best_fitness = run_genetic_algorithm(container_info, config)
-    print(container_info)
-    best_solution, best_fitness, generations_run, stats = run_genetic_algorithm(container_info, config)
-    allocate_cabinets_to_types(best_solution, best_fitness, generations_run, stats)
+    best_solution, best_fitness, generations_run, stats, if_start_messages, post_progress_messages,post_change_message = run_genetic_algorithm(container_info, config)
+    allocate_cabinets_to_types(best_solution,
+                               best_fitness,
+                               generations_run,
+                               stats,
+                               if_start_messages,
+                               post_progress_messages,
+                               post_change_message)
+
+# 加载自定义 CSS
+with open("style.css", encoding="utf-8") as f:
+    st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 
-@st.fragment
+
 def toggle_fragment():
+
     # 动态更新 label 文本
     label_text = "🔖 输入名称 🔖" if not st.session_state["toggle_status"] else "🧬 输入编码 🧬"
 
     # 切换控件
     toggle_status = tog.st_toggle_switch(
-        label=label_text,  # 使用动态文本
         key="input_toggle",
-        default_value=st.session_state["toggle_status"],
-        label_after=True,
-        inactive_color='#95e1d3',
-        active_color="#f38181",
-        track_color="#f38181"
+        label_end=label_text,  # 不显示后标签
+        justify='flex-start',
+        default_value=False,
+        inactive_color='#cee8ff',  # 使用 --bg-300: #374357 作为未激活颜色
+        active_color="#00668c",  # 使用 --accent-100: #3D5A80 作为激活颜色
+        track_color="#acc2ef",  # 使用 --primary-200: #4d648d 作为轨道颜色
+        label_bg_color_start='#0F1C2E',
+        label_bg_color_end=None,
+        background_color_near_button_start='#0F1C2E',  # 使用 --primary-200: #4d648d
+        background_color_near_button_end='#1F3A5F',  # 使用 --primary-100: #1F3A5F
+        border_radius='30px',
     )
 
     # 检测切换状态并更新，不需要刷新整个页面
@@ -82,116 +101,163 @@ def toggle_fragment():
 
 
 # 侧边栏简易功能
+# 侧边栏替换为 st_on_hover_tabs
+# 侧边栏替换为 st_on_hover_tabs
+# 侧边栏替换为 st_on_hover_tabs
+# 侧边栏替换为 st_on_hover_tabs
+# 侧边栏简易功能
 with st.sidebar:
-    st.header("🚴简易匹配工具")
+    tabs = on_hover_tabs(
+        tabName=['简易匹配工具'],
+        iconName=['🚴'],  # 使用适当的图标
+        default_choice=0,
+        styles={'navtab': {'background-color': '#0F1C2E',
+                           'color': 'white',
+                           'font-size': '20px',
+},
+                },
+    )
 
-    toggle_fragment()
+    if tabs == '简易匹配工具':
+        # 将所有内容包装在一个具有特定类名的容器中，方便CSS控制显示与隐藏
+        st.markdown('<div class="sidebar-content">', unsafe_allow_html=True)
 
-    if not st.session_state["toggle_status"]:  # False 表示输入名称
+        # 包装 toggle_fragment 在一个额外的 div 中，以便更好地控制
+        toggle_fragment()
 
-        sidebar_product_name = st.text_input("🔖输入产品名称", key="nam🧬e_input")
-        sidebar_product_code = st.text_input("🧬输入产品编码", disabled=True, key="code_input")
-    else:  # True 表示输入编码
-        sidebar_product_name = st.text_input("🔖输入产品名称", disabled=True, key="name_input")
-        sidebar_product_code = st.text_input("🧬输入产品编码", key="code_input")
+        if not st.session_state["toggle_status"]:  # False 表示输入名称
+            sidebar_product_name = st.text_input("🔖 输入产品名称", key="name_input")
+            sidebar_product_code = st.text_input("🧬 输入产品编码", disabled=True, key="code_input")
+        else:  # True 表示输入编码
+            sidebar_product_name = st.text_input("🔖 输入产品名称", disabled=True, key="name_input_disabled")
+            sidebar_product_code = st.text_input("🧬 输入产品编码", key="code_input")
 
-    sidebar_quantity = st.number_input("🛒输入数量", min_value=0, step=1)
+        sidebar_quantity = st.number_input("🛒 输入数量", min_value=0, step=1)
 
-    if (sidebar_product_name or sidebar_product_code) and sidebar_quantity > 0:
+        if (sidebar_product_name or sidebar_product_code) and sidebar_quantity > 0:
+            # 清洗产品名称或编码
+            cleaned_name = clean_product_name(sidebar_product_name) if sidebar_product_name else None
+            cleaned_code = sidebar_product_code.strip() if sidebar_product_code else None
 
-        # 清洗产品名称或编码
-        cleaned_name = clean_product_name(sidebar_product_name) if sidebar_product_name else None
-        cleaned_code = sidebar_product_code.strip() if sidebar_product_code else None
+            # 从匹配文件中读取产品数据
+            matching_file_path = 'cleaned_data.xlsx'  # 需要在同一目录下提供该文件
+            df = pd.read_excel(matching_file_path, sheet_name='境外贸易商品名称')
 
-        # 从匹配文件中读取产品数据
-        matching_file_path = 'cleaned_data.xlsx'  # 需要在同一目录下提供该文件
-        df = pd.read_excel(matching_file_path, sheet_name='境外贸易商品名称')
+            product_names = df['型号'].dropna().astype(str).tolist()
+            original_product_names = df['型号'].dropna().astype(str).tolist()  # 假设这个列表包含原始未清洗的名称
+            product_weights = df['毛重（箱/桶）'].dropna().astype(float).tolist()
+            product_codes = df['产品编码(金蝶云)'].dropna().astype(str).tolist()
 
-        product_names = df['型号'].dropna().astype(str).tolist()
-        original_product_names = df['型号'].dropna().astype(str).tolist()  # 假设这个列表包含原始未清洗的名称
-        product_weights = df['毛重（箱/桶）'].dropna().astype(float).tolist()
-        product_codes = df['产品编码(金蝶云)'].dropna().astype(str).tolist()
+            # 匹配产品
+            if cleaned_name:
+                match_result = find_best_match(
+                    cleaned_name,
+                    product_names,
+                    product_weights,
+                    product_codes,
+                )
+            elif cleaned_code:
+                match_result = find_best_match_by_code(
+                    cleaned_code,
+                    product_codes,
+                    product_weights,
+                    product_names,
+                    original_product_names,
+                )
+            best_match = match_result["best_match"]
+            all_matches = match_result["all_matches"]
 
-        # 匹配产品
-        if cleaned_name:
-            match_result = find_best_match(
-                cleaned_name,
-                product_names,
-                product_weights,
-                product_codes,
-            )
-        elif cleaned_code:
-            match_result = find_best_match_by_code(
-                cleaned_code,
-                product_codes,
-                product_weights,
-                product_names,
-                original_product_names,
-            )
-        best_match = match_result["best_match"]
-        all_matches = match_result["all_matches"]
+            if best_match["similarity"] < 99:
+                # 提供前 5 个匹配项供选择
+                options = [
+                    f"编号：{match['code']} | 产品名称： {For_Update_Original_data.loc[For_Update_Original_data['产品编号（金蝶云）'] == match['code'].strip(), '产品名称'].values[0]} | 相似度: {match['similarity']} | 毛重: {match['weight']} KG"
+                    for match in all_matches
+                ]
 
-        if best_match["similarity"] < 99:
-            # 提供前 5 个匹配项供选择
-            options = [
-                f"编号：{match['code']} | 产品名称： {For_Update_Original_data.loc[For_Update_Original_data['产品编号（金蝶云）'] == match['code'].strip(), '产品名称'].values[0]} | 相似度: {match['similarity']} | 毛重: {match['weight']}"
-                for match in all_matches
-            ]
+                user_selection = st.selectbox(
+                    "选择最佳匹配项",
+                    options,
+                    index=0,
+                    key="sidebar_selection"
+                )
 
-            user_selection = st.selectbox(
-                "选择最佳匹配项",
-                options,
-                index=0,
-                key="sidebar_selection"
-            )
+                # 使用产品编号匹配
+                original_product_name = user_selection.split("|")[1].strip().replace("产品名称：", "").strip()
+                selected_product_code = user_selection.split("|")[0].strip().replace("编号：", "").strip()
+                selected_match = next(
+                    (match for match in all_matches if match["code"].strip() == selected_product_code), None
+                )
 
-            # 使用产品编号匹配
-            original_product_name = user_selection.split("|")[1].strip().replace("产品名称：", "").strip()  # 获取未清洗的产品名称
-            selected_product_code = user_selection.split("|")[0].strip().replace("编号：", "").strip()
-            selected_match = next(
-                (match for match in all_matches if match["code"].strip() == selected_product_code), None
-            )
+                if selected_match:
+                    product_spec = For_Update_Original_data.loc[
+                        For_Update_Original_data['产品编号（金蝶云）'] == selected_match['code'].strip(), '产品规格'].values[0]
+                    cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
 
-            product_spec = For_Update_Original_data.loc[
-                For_Update_Original_data['产品编号（金蝶云）'] == selected_match['code'].strip(), '产品规格'].values[0]
-            cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
+                    # 计算总毛重（假设函数已定义）
+                    total_weight = calculate_total_weight_for_sidebar(
+                        product_names=[original_product_name],  # 使用原始产品名称
+                        quantities=[sidebar_quantity],
+                        cleaned_product_specifications_names=[cleaned_spec],  # 传入清洗后的规格
+                        matched_product_weights=[selected_match['weight']],
+                        matched_product_codes=[selected_match['code']]
+                    )
 
-            if selected_match is None:
-                st.warning("未找到符合条件的匹配项，请检查数据或重新选择。")
+                    # 条件渲染自定义提示框
+                    st.markdown(f"""
+                        <div class="custom-info">
+                            产品名字：{original_product_name}  <br>
+                            产品编码：{selected_match['code']}  <br>
+                            产品规格：{product_spec}  <br>
+                            毛重：{selected_match['weight']:.2f} KG
+                        </div>
+                    """, unsafe_allow_html=True)
+
+                    st.markdown(f"""
+                        <div class="custom-success">
+                            总毛重: {total_weight:.2f} KG
+                        </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    # 条件渲染自定义警告框
+                    st.markdown(f"""
+                        <div class="custom-warning">
+                            未找到符合条件的匹配项，请检查数据或重新选择。
+                        </div>
+                    """, unsafe_allow_html=True)
             else:
-                st.info(
-                    f"选择的产品名称: {original_product_name}  \n选择的产品编码: {selected_match['code']}  \n产品规格：{product_spec}  \n毛重: {selected_match['weight']} KG")
+                # 使用未清洗的产品名称来展示最佳匹配
+                original_best_product_name = For_Update_Original_data.loc[
+                    For_Update_Original_data['产品编号（金蝶云）'] == best_match['code'].strip(), '产品名称'].values[0]
+                product_spec = For_Update_Original_data.loc[
+                    For_Update_Original_data['产品编号（金蝶云）'] == best_match['code'].strip(), '产品规格'].values[0]
+                cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
+
+                # 计算总毛重（假设函数已定义）
                 total_weight = calculate_total_weight_for_sidebar(
-                    product_names=[original_product_name],  # 使用原始产品名称
+                    product_names=[original_best_product_name],  # 使用原始产品名称
                     quantities=[sidebar_quantity],
                     cleaned_product_specifications_names=[cleaned_spec],  # 传入清洗后的规格
-                    matched_product_weights=[selected_match['weight']],
-                    matched_product_codes=[selected_match['code']]
+                    matched_product_weights=[best_match['weight']],
+                    matched_product_codes=[best_match['code']]
                 )
-                st.success(f"总毛重: {total_weight:.2f} KG")
-        else:
-            # 使用未清洗的产品名称来展示最佳匹配
-            original_best_product_name = For_Update_Original_data.loc[
-                For_Update_Original_data['产品编号（金蝶云）'] == best_match['code'].strip(), '产品名称'].values[0]
-            product_spec = For_Update_Original_data.loc[
-                For_Update_Original_data['产品编号（金蝶云）'] == best_match['code'].strip(), '产品规格'].values[0]
-            cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
 
-            # 转义，避免文字变成斜体
-            original_best_product_name_escaped = original_best_product_name.replace("*", "\\*")
-            product_spec_escaped = product_spec.replace("*", "\\*")
-            st.info(
-                f"最佳匹配项名称: {original_best_product_name_escaped}  \n最佳匹配项编码: {best_match['code']}  \n产品规格：{product_spec_escaped}  \n毛重: {best_match['weight']} KG")
+                # 条件渲染自定义提示框
 
-            total_weight = calculate_total_weight_for_sidebar(
-                product_names=[original_best_product_name],  # 使用原始产品名称
-                quantities=[sidebar_quantity],
-                cleaned_product_specifications_names=[cleaned_spec],  # 传入清洗后的规格
-                matched_product_weights=[best_match['weight']],
-                matched_product_codes=[best_match['code']]
-            )
-            st.success(f"总毛重: {total_weight:.2f} KG")
+                st.markdown(f"""
+                    <div class="custom-info">
+                        最佳匹配项名称：<br>{original_best_product_name}  <br>
+                        最佳匹配项编码：{best_match['code']}  <br>
+                        产品规格：{product_spec}  <br>
+                        毛重：{best_match['weight']:.2f} KG
+                    </div>
+                """, unsafe_allow_html=True)
 
+                st.markdown(f"""
+                    <div class="custom-success">
+                        总毛重: {total_weight:.2f} KG
+                    </div>
+                """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 if "last_upload_method" not in st.session_state:
     st.session_state["last_upload_method"] = None
 

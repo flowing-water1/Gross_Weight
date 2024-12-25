@@ -16,17 +16,17 @@ def calculate_total_weight_for_sidebar(product_names, quantities, cleaned_produc
         tray_count = quantity / pallets_per_package
         single_product_weight = quantity * matched_weight + tray_count * Decimal(17)
 
-        print(f"产品名字：{product_names[i]}:")
-        print(f"  产品编号（金蝶云）：{matched_product_codes[i]}")
-        print(f"  产品 {i + 1}:")
-        print(f"  数量: {quantity}")
-        print(f"  规格: {spec}")
-        print(f"  毛重（单件）: {matched_weight:.3f} KG")
-        print(f"  托盘数: {tray_count:.2f}")
-        print(f"  产品总毛重: {quantity} * {matched_weight:.3f} + {tray_count} * 17 = {single_product_weight:.3f} KG\n")
-        st.info(
-            f"产品名字：{product_names[i]}  \n托盘计算：{quantity} / {pallets_per_package}={tray_count}  \n\
-            产品总毛重: {quantity} * {matched_weight:.3f} + {tray_count} * 17 = {single_product_weight:.3f} KG")
+        # 使用 st.markdown 模拟 st.info
+        st.markdown(f"""
+            <div class="custom-info">
+                产品名字：<br>{product_names[i]}  <br>
+                托盘计算：{quantity} / {pallets_per_package}={tray_count:.1f}  <br>
+                产品总毛重:<br>
+    {quantity} * {matched_weight:.1f} + {tray_count:.1f} * 17 = {single_product_weight:.1f} KG  <br>
+            </div>
+        """, unsafe_allow_html=True)
+
+
         total_weight += single_product_weight
 
     return total_weight
