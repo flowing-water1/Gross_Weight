@@ -14,6 +14,7 @@ from original_data import For_Update_Original_data
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from st_copy_to_clipboard import st_copy_to_clipboard
 from st_on_hover_tabs import on_hover_tabs  # 导入 st_on_hover_tabs 控件
+from update_notes import show_update_dialog
 
 import streamlit_nested_layout
 from split_pallets import process_container_info
@@ -27,7 +28,7 @@ from tutorials import image_tutorial, text_tutorials, question_tutorials, side_b
 st.set_page_config(layout="wide", initial_sidebar_state='collapsed')
 title_col1, title_col2, title_col3 = st.columns([0.38, 1.1, 0.3])
 with title_col2:
-    title_help = "👻由流水开发，目前版本：2.6👻"
+    title_help = "👻由流水开发，目前版本：{updates['version']}👻"
     st.title("🚚产品重量统计与柜重计算🚢", help=title_help)
 
 # 初始化变量，确保它们在任何情况下都被定义
@@ -52,6 +53,14 @@ def reset_calculation_states():
     for key in keys_to_reset:
         if key in st.session_state:
             del st.session_state[key]
+
+
+# 显示更新日志对话框，仅在首次加载时显示
+if "update_dialog_shown" not in st.session_state:
+    show_update_dialog()
+    st.session_state.update_dialog_shown = True
+
+
 
 
 
