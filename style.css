@@ -16,108 +16,90 @@
 section[data-testid='stSidebar'] {
     background-color: var(--bg-100);
     flex-shrink: unset !important;
-    /* 设置侧边栏的过渡效果 */
     transition: width 0.5s ease;
     position: relative; /* 确保相对定位 */
 }
 
-/* 隐藏侧边栏中的文本和输入框，仅显示图标 */
+/* 侧边栏内容容器，默认隐藏 */
 .sidebar-content {
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-.sidebar-content > * {
+/*
+   ============ 3. 通用：只针对 sidebar 内部的「默认隐藏 -> hover/focus 显示」 ============
+   注意：把 .stSelectbox、.stTextInput、.stNumberInput 等组件，都加上“section[data-testid='stSidebar']”前缀
+   这样只会影响 sidebar 内的同名组件，而不会影响主页面的同名组件。
+*/
+
+/* 默认隐藏 */
+section[data-testid='stSidebar'] .sidebar-content > *,
+section[data-testid='stSidebar'] .st_on_hover_tabs__tab_label,
+section[data-testid='stSidebar'] .st_on_hover_tabs__tab_content,
+section[data-testid='stSidebar'] .stTextInput,
+section[data-testid='stSidebar'] .stNumberInput,
+section[data-testid='stSidebar'] .toggle-container,
+section[data-testid='stSidebar'] .toggle-container *,
+section[data-testid='stSidebar'] .stTextInput label,
+section[data-testid='stSidebar'] .stNumberInput label,
+/* 这里是重点，限定了 .stSelectbox 只在sidebar下 才隐藏 */
+section[data-testid='stSidebar'] .stSelectbox,
+section[data-testid='stSidebar'] .stSelectbox label {
     opacity: 0;
     visibility: hidden;
+    pointer-events: none;
     transition: opacity 0.3s ease, visibility 0.3s ease;
+    color: var(--text-200);
 }
 
-.st_on_hover_tabs__tab_label,
-.st_on_hover_tabs__tab_content,
-.stTextInput,
-.stNumberInput,
-.stSelectbox,
-.stSelectbox label,
-.stNumberInput label,
-.stTextInput label,
-.stTextInput div,
-.stNumberInput div,
-.stSelectbox div,
-.toggle-container,
-.toggle-container * {
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none; /* 禁止点击，避免内容在收缩时被点击 */
-    color: var(--text-200); /* 设置输入框和标签的文本颜色 */
-}
-
-/* 侧边栏悬浮或子元素获得焦点时显示内容 */
+/* 悬浮/聚焦时显示 */
 section[data-testid='stSidebar']:hover .sidebar-content,
-section[data-testid='stSidebar']:focus-within .sidebar-content {
-    opacity: 1;
-    visibility: visible;
-}
-
+section[data-testid='stSidebar']:focus-within .sidebar-content,
+section[data-testid='stSidebar']:hover .sidebar-content > *,
+section[data-testid='stSidebar']:focus-within .sidebar-content > *,
 section[data-testid='stSidebar']:hover .st_on_hover_tabs__tab_label,
-section[data-testid='stSidebar']:hover .st_on_hover_tabs__tab_content,
-section[data-testid='stSidebar']:hover .stTextInput,
-section[data-testid='stSidebar']:hover .stNumberInput,
-section[data-testid='stSidebar']:hover .stSelectbox,
-section[data-testid='stSidebar']:hover .stSelectbox label,
-section[data-testid='stSidebar']:hover .stNumberInput label,
-section[data-testid='stSidebar']:hover .stTextInput label,
-section[data-testid='stSidebar']:hover .stTextInput div,
-section[data-testid='stSidebar']:hover .stNumberInput div,
-section[data-testid='stSidebar']:hover .stSelectbox div,
-section[data-testid='stSidebar']:hover .toggle-container,
-section[data-testid='stSidebar']:hover .toggle-container *,
 section[data-testid='stSidebar']:focus-within .st_on_hover_tabs__tab_label,
+section[data-testid='stSidebar']:hover .st_on_hover_tabs__tab_content,
 section[data-testid='stSidebar']:focus-within .st_on_hover_tabs__tab_content,
+section[data-testid='stSidebar']:hover .stTextInput,
 section[data-testid='stSidebar']:focus-within .stTextInput,
+section[data-testid='stSidebar']:hover .stNumberInput,
 section[data-testid='stSidebar']:focus-within .stNumberInput,
-section[data-testid='stSidebar']:focus-within .stSelectbox,
-section[data-testid='stSidebar']:focus-within .stSelectbox label,
-section[data-testid='stSidebar']:focus-within .stNumberInput label,
-section[data-testid='stSidebar']:focus-within .stTextInput label,
-section[data-testid='stSidebar']:focus-within .stTextInput div,
-section[data-testid='stSidebar']:focus-within .stNumberInput div,
-section[data-testid='stSidebar']:focus-within .stSelectbox div,
+section[data-testid='stSidebar']:hover .toggle-container,
 section[data-testid='stSidebar']:focus-within .toggle-container,
-section[data-testid='stSidebar']:focus-within .toggle-container * {
-    opacity: 1;
-    pointer-events: auto;
-    color: var(--text-100);
+section[data-testid='stSidebar']:hover .toggle-container *,
+section[data-testid='stSidebar']:focus-within .toggle-container *,
+section[data-testid='stSidebar']:hover .stTextInput label,
+section[data-testid='stSidebar']:focus-within .stTextInput label,
+section[data-testid='stSidebar']:hover .stNumberInput label,
+section[data-testid='stSidebar']:focus-within .stNumberInput label,
+/* 这里也是重点，限定了只在sidebar悬浮/聚焦时，stSelectbox 才显示 */
+section[data-testid='stSidebar']:hover .stSelectbox,
+section[data-testid='stSidebar']:focus-within .stSelectbox,
+section[data-testid='stSidebar']:hover .stSelectbox label,
+section[data-testid='stSidebar']:focus-within .stSelectbox label {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    color: var(--text-100) !important;
 }
 
-/* ============ 3. 输入框和标签背景 ============ */
+/* ============ 4. 输入框和标签背景 ============ */
 .stTextInput > div > div > input,
-.stNumberInput > div > div > input,
+.stNumberInput > div > div > button,
+.stNumberInput > div > div > div > input,
 .stSelectbox > div > div > select {
-    background-color: var(--bg-200) !important;
-    color: var(--text-100) !important; /* 确保文本颜色为白色 */
-    border: 1px solid var(--primary-200) !important;
-    border-radius: 5px !important;
-    padding: 8px !important;
-    appearance: none; /* 移除默认样式 */
-    width: 100% !important;      /* 使 Selectbox 宽度适应容器 */
-}
-
-.stTextInput > div > label,
-.stNumberInput > div > label,
-.stSelectbox > div > label {
-    color: var(--text-200) !important;
-}
-
-/* 如果还不生效，可以进一步加一个选择器： */
-.stNumberInput input[type="number"] {
     background-color: var(--bg-200) !important;
     color: var(--text-100) !important;
     border: 1px solid var(--primary-200) !important;
+    border-radius: 5px !important;
+    padding: 8px !important;
+    appearance: none;
+    width: 100% !important;
 }
 
-/* ============ 4. 切换控件容器 + 背景色 ============ */
+/* ============ 5. 切换控件容器 ============ */
 .toggle-container {
     background-color: var(--bg-200);
     padding: 10px;
@@ -125,26 +107,22 @@ section[data-testid='stSidebar']:focus-within .toggle-container * {
     margin-bottom: 10px;
 }
 
-/* ============ 5. on_hover_tabs 自定义颜色 ============ */
-/* 如果它不是 iframe，而是纯 CSS 类： */
+/* ============ 6. on_hover_tabs 自定义颜色 ============ */
 .st_on_hover_tabs__tab_label {
     background-color: var(--bg-200) !important;
     color: var(--text-100) !important;
     border: none !important;
 }
-
 .st_on_hover_tabs__tab_label_selected {
     background-color: var(--bg-300) !important;
     color: var(--text-100) !important;
     border: none !important;
 }
-
-/* 如果存在 span 子元素 */
 .st_on_hover_tabs__tab_label span {
     color: var(--text-100) !important;
 }
 
-/* ============ 6. 按钮样式 ============ */
+/* ============ 7. 按钮样式 ============ */
 button {
     background-color: var(--primary-200);
     color: var(--text-100);
@@ -153,14 +131,11 @@ button {
     border-radius: 5px;
     cursor: pointer;
 }
-
 button:hover {
     background-color: var(--primary-100);
 }
 
-/* ============ 7. 自定义提示框样式 ============ */
-/* 增强对 custom-infocustom-info, custom-success 和 custom-warning 的选择器准确性 */
-/* 自定义 Info 框 */
+/* ============ 8. 自定义提示框样式 ============ */
 .custom-info {
     background-color: var(--bg-300) !important;
     color: var(--text-100) !important;
@@ -169,8 +144,6 @@ button:hover {
     margin-top: 10px;
     margin-bottom: 10px;
 }
-
-/* 自定义 Success 框 */
 .custom-success {
     background-color: var(--accent-100) !important;
     color: var(--text-100) !important;
@@ -179,10 +152,8 @@ button:hover {
     margin-top: 10px;
     margin-bottom: 10px;
 }
-
-/* 自定义 Warning 框 */
 .custom-warning {
-    background-color: #f39c12 !important; /* 可以根据需要调整 */
+    background-color: #f39c12 !important;
     color: var(--text-100) !important;
     padding: 10px;
     border-radius: 5px;
@@ -190,31 +161,99 @@ button:hover {
     margin-bottom: 10px;
 }
 
-/* 确保 stMarkdown 容器具有 100% 宽度，避免内容被限制 */
+/* ============ 9. stMarkdown 容器100%宽度 & custom-info visibility ============ */
 .sidebar-content .stMarkdown {
     width: 100% !important;
 }
-
-/* 如果仍有问题，可以尝试使用更高优先级的选择器 */
 div[data-testid="stMarkdownContainer"] .custom-info,
 div[data-testid="stMarkdownContainer"] .custom-success,
 div[data-testid="stMarkdownContainer"] .custom-warning {
     opacity: 0 !important;
     visibility: hidden !important;
 }
-
 section[data-testid='stSidebar']:hover div[data-testid="stMarkdownContainer"] .custom-info,
-section[data-testid='stSidebar']:hover div[data-testid="stMarkdownContainer"] .custom-success,
-section[data-testid='stSidebar']:hover div[data-testid="stMarkdownContainer"] .custom-warning,
 section[data-testid='stSidebar']:focus-within div[data-testid="stMarkdownContainer"] .custom-info,
+section[data-testid='stSidebar']:hover div[data-testid="stMarkdownContainer"] .custom-success,
 section[data-testid='stSidebar']:focus-within div[data-testid="stMarkdownContainer"] .custom-success,
+section[data-testid='stSidebar']:hover div[data-testid="stMarkdownContainer"] .custom-warning,
 section[data-testid='stSidebar']:focus-within div[data-testid="stMarkdownContainer"] .custom-warning {
     opacity: 1 !important;
     visibility: visible !important;
 }
 
+/* ============ 10. Toggle Iframe（如果 src 包含 toggle 则悬浮才显示） ============ */
+section[data-testid='stSidebar'] iframe[src*="toggle"] {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    pointer-events: none;
+}
+section[data-testid='stSidebar']:hover iframe[src*="toggle"],
+section[data-testid='stSidebar']:focus-within iframe[src*="toggle"] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
 
-/* ============ 8. 媒体查询(自适应) ============ */
+/* ============ 11. 覆盖 Selectbox 下拉菜单的样式(依然只针对sidebar) ============ */
+section[data-testid='stSidebar'] .stSelectbox div div div {
+    background-color: var(--bg-200) !important;
+    color: var(--text-100) !important;
+}
+
+/*!* 1. 修改下拉菜单的容器 ul *!*/
+/*ul[data-testid="stSelectboxVirtualDropdown"] {*/
+/*    !* 背景色、文字色 *!*/
+/*    background-color: var(--bg-200) !important;*/
+/*    color: var(--text-100) !important;*/
+
+/*    !* 边框与圆角 *!*/
+/*    border: 1px solid var(--primary-200) !important;*/
+/*    border-radius: 5px !important;*/
+
+/*    !* 阴影效果、最大高度与滚动 *!*/
+/*    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;*/
+/*    max-height: 300px;*/
+/*    overflow-y: auto;*/
+/*}*/
+
+/*!* 2. 每一个下拉选项（li） *!*/
+/*ul[data-testid="stSelectboxVirtualDropdown"] li[role="option"] {*/
+/*    background-color: var(--bg-200) !important;*/
+/*    color: var(--text-100) !important;*/
+
+/*    !* 统一高度与内边距 *!*/
+/*    height: 40px;*/
+/*    padding: 10px 15px !important;*/
+/*    display: flex;*/
+/*    align-items: center;*/
+/*    cursor: pointer; !* 鼠标悬停时显示手形指针 *!*/
+
+/*    !* 小过渡效果 *!*/
+/*    transition: background-color 0.3s ease, color 0.3s ease;*/
+/*}*/
+
+/*!* 3. 下拉选项的“悬停态” *!*/
+/*ul[data-testid="stSelectboxVirtualDropdown"] li[role="option"]:hover {*/
+/*    background-color: var(--bg-300) !important;*/
+/*    color: var(--text-100) !important;*/
+/*}*/
+
+/*!* 4. 下拉选项被“选中”时 *!*/
+/*ul[data-testid="stSelectboxVirtualDropdown"] li[role="option"][aria-selected="true"] {*/
+/*    background-color: var(--accent-100) !important;*/
+/*    color: var(--text-100) !important;*/
+/*}*/
+
+
+/*section[data-testid='stSidebar'] ul[data-testid="stSelectboxVirtualDropdown"] {*/
+/*    !* 或者写成 :is(section[data-testid='stSidebar']) ul[...] 视浏览器兼容性 *!*/
+/*    border: 2px dashed var(--accent-100) !important; !* 示意：与全局不同 *!*/
+/*    background-color: var(--bg-300) !important;*/
+/*}*/
+
+/* ============ 12. 媒体查询 (自适应布局) ============ */
+/* 小屏 */
 @media (hover: hover) and (min-width: 600px) and (max-width: 769px) {
     header[data-testid="stHeader"] {
         display: none;
@@ -238,73 +277,15 @@ section[data-testid='stSidebar']:focus-within div[data-testid="stMarkdownContain
     section[data-testid='stSidebar']:focus-within {
         min-width: 330px !important;
     }
-    .sidebar-content {
-        opacity: 0;
-        visibility: hidden;
-    }
-    section[data-testid='stSidebar']:hover .sidebar-content,
-    section[data-testid='stSidebar']:focus-within .sidebar-content {
-        opacity: 1;
-        visibility: visible;
-    }
-    .st_on_hover_tabs__tab_label,
-    .st_on_hover_tabs__tab_content,
-    .stTextInput,
-    .stNumberInput,
-    .stSelectbox,
-    .stSelectbox label,
-    .stNumberInput label,
-    .stTextInput label,
-    .stTextInput div,
-    .stNumberInput div,
-    .stSelectbox div,
-    .toggle-container,
-    .toggle-container * {
-        opacity: 0;
-        pointer-events: none;
-        color: var(--text-200);
-    }
-    section[data-testid='stSidebar']:hover .st_on_hover_tabs__tab_label,
-    section[data-testid='stSidebar']:hover .st_on_hover_tabs__tab_content,
-    section[data-testid='stSidebar']:hover .stTextInput,
-    section[data-testid='stSidebar']:hover .stNumberInput,
-    section[data-testid='stSidebar']:hover .stSelectbox,
-    section[data-testid='stSidebar']:hover .stSelectbox label,
-    section[data-testid='stSidebar']:hover .stNumberInput label,
-    section[data-testid='stSidebar']:hover .stTextInput label,
-    section[data-testid='stSidebar']:hover .stTextInput div,
-    section[data-testid='stSidebar']:hover .stNumberInput div,
-    section[data-testid='stSidebar']:hover .stSelectbox div,
-    section[data-testid='stSidebar']:hover .toggle-container,
-    section[data-testid='stSidebar']:hover .toggle-container *,
-    section[data-testid='stSidebar']:focus-within .st_on_hover_tabs__tab_label,
-    section[data-testid='stSidebar']:focus-within .st_on_hover_tabs__tab_content,
-    section[data-testid='stSidebar']:focus-within .stTextInput,
-    section[data-testid='stSidebar']:focus-within .stNumberInput,
-    section[data-testid='stSidebar']:focus-within .stSelectbox,
-    section[data-testid='stSidebar']:focus-within .stSelectbox label,
-    section[data-testid='stSidebar']:focus-within .stNumberInput label,
-    section[data-testid='stSidebar']:focus-within .stTextInput label,
-    section[data-testid='stSidebar']:focus-within .stTextInput div,
-    section[data-testid='stSidebar']:focus-within .stNumberInput div,
-    section[data-testid='stSidebar']:focus-within .stSelectbox div,
-    section[data-testid='stSidebar']:focus-within .toggle-container,
-    section[data-testid='stSidebar']:focus-within .toggle-container * {
-        opacity: 1;
-        pointer-events: auto;
-        color: var(--text-100);
-    }
     button[kind="header"] {
         display: none;
     }
-    div[data-testid="collapsedControl"]{
+    div[data-testid="collapsedControl"] {
         display: none;
     }
 }
 
-
-
-
+/* 大屏 */
 @media (hover: hover) and (min-width: 769px) {
     header[data-testid="stHeader"] {
         display: none;
@@ -328,94 +309,54 @@ section[data-testid='stSidebar']:focus-within div[data-testid="stMarkdownContain
     section[data-testid='stSidebar']:focus-within {
         min-width: 330px !important;
     }
-    .sidebar-content {
-        opacity: 0;
-        visibility: hidden;
-    }
-    section[data-testid='stSidebar']:hover .sidebar-content,
-    section[data-testid='stSidebar']:focus-within .sidebar-content {
-        opacity: 1;
-        visibility: visible;
-    }
-    .st_on_hover_tabs__tab_label,
-    .st_on_hover_tabs__tab_content,
-    .stTextInput,
-    .stNumberInput,
-    .stSelectbox,
-    .stSelectbox label,
-    .stNumberInput label,
-    .stTextInput label,
-    .stTextInput div,
-    .stNumberInput div,
-    .stSelectbox div,
-    .toggle-container,
-    .toggle-container * {
-        opacity: 0;
-        pointer-events: none;
-        color: var(--text-200);
-    }
-    section[data-testid='stSidebar']:hover .st_on_hover_tabs__tab_label,
-    section[data-testid='stSidebar']:hover .st_on_hover_tabs__tab_content,
-    section[data-testid='stSidebar']:hover .stTextInput,
-    section[data-testid='stSidebar']:hover .stNumberInput,
-    section[data-testid='stSidebar']:hover .stSelectbox,
-    section[data-testid='stSidebar']:hover .stSelectbox label,
-    section[data-testid='stSidebar']:hover .stNumberInput label,
-    section[data-testid='stSidebar']:hover .stTextInput label,
-    section[data-testid='stSidebar']:hover .stTextInput div,
-    section[data-testid='stSidebar']:hover .stNumberInput div,
-    section[data-testid='stSidebar']:hover .stSelectbox div,
-    section[data-testid='stSidebar']:hover .toggle-container,
-    section[data-testid='stSidebar']:hover .toggle-container *,
-    section[data-testid='stSidebar']:focus-within .st_on_hover_tabs__tab_label,
-    section[data-testid='stSidebar']:focus-within .st_on_hover_tabs__tab_content,
-    section[data-testid='stSidebar']:focus-within .stTextInput,
-    section[data-testid='stSidebar']:focus-within .stNumberInput,
-    section[data-testid='stSidebar']:focus-within .stSelectbox,
-    section[data-testid='stSidebar']:focus-within .stSelectbox label,
-    section[data-testid='stSidebar']:focus-within .stNumberInput label,
-    section[data-testid='stSidebar']:focus-within .stTextInput label,
-    section[data-testid='stSidebar']:focus-within .stTextInput div,
-    section[data-testid='stSidebar']:focus-within .stNumberInput div,
-    section[data-testid='stSidebar']:focus-within .stSelectbox div,
-    section[data-testid='stSidebar']:focus-within .toggle-container,
-    section[data-testid='stSidebar']:focus-within .toggle-container * {
-        opacity: 1;
-        pointer-events: auto;
-        color: var(--text-100);
-    }
     button[kind="header"] {
         display: none;
     }
-    div[data-testid="collapsedControl"]{
+    div[data-testid="collapsedControl"] {
         display: none;
     }
 }
 
-/* ============ 9. Toggle Fragment 组件的悬浮隐藏 ============ */
-/* 如果 src 包含 toggle，则继续保留： */
-section[data-testid='stSidebar'] iframe[src*="toggle"] {
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-    pointer-events: none;
-}
-section[data-testid='stSidebar']:hover iframe[src*="toggle"],
-section[data-testid='stSidebar']:focus-within iframe[src*="toggle"] {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
+
+/* 1. 使特定 Toggle 组件的外层容器透明 */
+.stElementContainer.st-key-input_toggle {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important; /* 移除内边距，避免多余空间 */
 }
 
-
-
-/* ============ 11. 优化 Selectbox 的背景和文本颜色 ============ */
-
-
-
-/* 覆盖 Selectbox 下拉菜单的背景和文本颜色 */
-section[data-testid='stSidebar'] .stSelectbox div div div {
-    background-color: var(--bg-200) !important; /* 下拉菜单背景颜色 */
-    color: var(--text-100) !important;           /* 下拉菜单文本颜色 */
+/* 2. 使 Toggle 组件内部的 iframe 背景透明 */
+.stElementContainer.st-key-input_toggle iframe.stCustomComponentV1 {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
+/* 3. 如果外层的 MuiTypography-root 添加了背景，也需要覆盖 */
+.MuiTypography-root.MuiTypography-subtitle1 > div {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important; /* 移除内边距，保持一致 */
+}
+
+/* 4. 可选：调整 Toggle 组件内部元素的背景颜色，使其与侧边栏颜色一致 */
+.MuiGrid-root.MuiGrid-item span {
+    background: transparent !important;
+    color: white !important; /* 根据需要调整文字颜色 */
+}
+
+/* 进一步覆盖 Toggle 组件内部的具体元素 */
+.stElementContainer.st-key-input_toggle .MuiTypography-root.MuiTypography-subtitle1 > div {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+/* 覆盖 Toggle 组件内部标签的背景 */
+.stElementContainer.st-key-input_toggle .MuiGrid-root.MuiGrid-item span {
+    background: transparent !important;
+    color: white !important; /* 根据需要调整 */
+}
