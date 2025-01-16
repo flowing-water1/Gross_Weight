@@ -1,8 +1,11 @@
+import copy
 import json
 import os
 import pandas as pd
 import streamlit as st
 import streamlit_antd_components as sac
+
+from constants import PACKAGE_TO_PALLETS
 from container import run_genetic_algorithm, config
 from container_display import allocate_cabinets_to_types
 # from temp import run_genetic_algorithm, allocate_cabinets_to_types, config
@@ -15,10 +18,10 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from st_copy_to_clipboard import st_copy_to_clipboard
 from st_on_hover_tabs import on_hover_tabs  # 导入 st_on_hover_tabs 控件
 from update_notes import show_update_dialog
-
 import streamlit_nested_layout
 from split_pallets import process_container_info
-import streamlit_toggle_diy  as tog
+
+import streamlit_toggle_diy as tog
 import base64
 import requests
 from io import StringIO
@@ -47,6 +50,9 @@ if "show_button_cabinet" not in st.session_state:
 if "cabinet_mode" not in st.session_state:
     st.session_state["cabinet_mode"] = False  # 控制柜重计算对话框打开时的状态
 
+if "region_toggle" not in st.session_state:
+    st.session_state["region_toggle"] = False
+
 
 def reset_calculation_states():
     keys_to_reset = ["calc_done", "container_info", "total_weight", "calculation_details"]
@@ -57,7 +63,7 @@ def reset_calculation_states():
 
 # 显示更新日志对话框，仅在首次加载时显示
 if "update_dialog_shown" not in st.session_state:
-    show_update_dialog()
+    # show_update_dialog()
     st.session_state.update_dialog_shown = True
 
 
@@ -68,6 +74,7 @@ if "update_dialog_shown" not in st.session_state:
 def cabinet(container_info):
     # best_solution, best_fitness = run_genetic_algorithm(container_info, config)
     best_solution, best_fitness, generations_run, stats, if_start_messages, post_progress_messages,post_change_message = run_genetic_algorithm(container_info, config)
+
     allocate_cabinets_to_types(best_solution,
                                best_fitness,
                                generations_run,
@@ -81,7 +88,7 @@ with open("style.css", encoding="utf-8") as f:
     st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True)
 
 
-
+@st.fragment
 def toggle_fragment():
 
     # 动态更新 label 文本
@@ -100,7 +107,12 @@ def toggle_fragment():
         label_bg_color_end=None,
         background_color_near_button_start='#0F1C2E',  # 使用 --primary-200: #4d648d
         background_color_near_button_end='#1F3A5F',  # 使用 --primary-100: #1F3A5F
-        border_radius='30px',
+        border_radius='8px',
+        label_start_color="blue",  # 前标签文字颜色（深灰色）
+        label_end_color="white",  # 后标签文字颜色（深灰色）
+        label_font_size="16px",  # 标签字体大小
+        label_font_weight="bold",  # 标签字体粗细
+        switch_size="medium",  # Switch 尺寸
     )
 
     # 检测切换状态并更新，不需要刷新整个页面
@@ -108,12 +120,58 @@ def toggle_fragment():
         st.session_state["toggle_status"] = toggle_status
         st.rerun()
 
+@st.fragment
+def region_toggle_fragment():
+    """
+    根据切换状态展示不同的标签，比如: 香港模式 / 欧洲模式
+    将值存储在 st.session_state["region_toggle"] 里
+    """
+    # 获取当前区域模式
+    current_val = st.session_state["region_toggle"]
+    label_text = "香港模式" if current_val else "欧洲模式"
 
-# 侧边栏简易功能
-# 侧边栏替换为 st_on_hover_tabs
-# 侧边栏替换为 st_on_hover_tabs
-# 侧边栏替换为 st_on_hover_tabs
-# 侧边栏替换为 st_on_hover_tabs
+    # 传入自定义参数，优化视觉效果
+    toggle_status = tog.st_toggle_switch(
+        key="region_toggle_key",
+        label_start=None,          # 不显示前标签
+        label_end=label_text,      # 显示后标签
+        justify="flex-left",          # 标签与开关居中对齐
+        default_value=current_val, # 当前状态
+
+        # ========== 优化后的配色 ==========
+        inactive_color="#B0BEC5",    # 未激活状态：蓝灰色
+        active_color="#1976D2",      # 激活状态：深蓝色
+        track_color="#90CAF9",       # 轨道颜色：浅蓝色
+        label_bg_color_start="#BBDEFB",  # 标签背景起始色：浅蓝色
+        label_bg_color_end="#64B5F6",    # 标签背景结束色：中蓝色
+        background_color_near_button_start="#BBDEFB",  # 开关附近背景起始色：非常浅蓝色
+        background_color_near_button_end="#FFFFFF",    # 开关附近背景结束色：浅蓝色
+        border_radius="20px",       # 圆角：20px
+
+        # 标签文字样式
+        label_start_color="#333333", # 前标签文字颜色：深灰色
+        label_end_color="#333333",   # 后标签文字颜色：深灰色
+        label_font_size="18px",      # 标签字体大小：18px
+        label_font_weight="bold",    # 标签字体粗细：加粗
+
+        switch_size="medium",        # Switch 尺寸：中等
+    )
+
+    # 检测是否发生了切换
+    if toggle_status != current_val:
+        st.session_state["region_toggle"] = toggle_status
+        # 为了让标签在一次点击后就立刻更新，需要强制重跑
+        st.rerun()
+
+
+
+    # 检测是否发生了切换
+    if toggle_status != current_val:
+        st.session_state["region_toggle"] = toggle_status
+        # 为了让标签在一次点击后就立刻更新，需要强制重跑
+        st.rerun()
+
+
 # 侧边栏简易功能
 with st.sidebar:
     tabs = on_hover_tabs(
@@ -179,7 +237,7 @@ with st.sidebar:
             if best_match["similarity"] < 99:
                 # 提供前 5 个匹配项供选择
                 options = [
-                    f"编号：{match['code']} | 产品名称： {For_Update_Original_data.loc[For_Update_Original_data['产品编号（金蝶云）'] == match['code'].strip(), '产品名称'].values[0]} | 相似度: {match['similarity']} | 毛重: {match['weight']} KG"
+                    f"编号：{match['code']} | 产品名称： {For_Update_Original_data.loc[For_Update_Original_data['产品编号（金蝶云）'] == match['code'].strip(), '产品名称'].values[0]} | 相似度: {match['similarity']:.2f} | 毛重: {match['weight']:.2f} KG"
                     for match in all_matches
                 ]
 
@@ -202,13 +260,16 @@ with st.sidebar:
                         For_Update_Original_data['产品编号（金蝶云）'] == selected_match['code'].strip(), '产品规格'].values[0]
                     cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
 
+                    region_is_hk = st.session_state.get("region_toggle", False)
+
                     # 计算总毛重（假设函数已定义）
                     total_weight = calculate_total_weight_for_sidebar(
                         product_names=[original_product_name],  # 使用原始产品名称
                         quantities=[sidebar_quantity],
                         cleaned_product_specifications_names=[cleaned_spec],  # 传入清洗后的规格
                         matched_product_weights=[selected_match['weight']],
-                        matched_product_codes=[selected_match['code']]
+                        matched_product_codes=[selected_match['code']],
+                        is_hk=region_is_hk
                     )
 
                     # 条件渲染自定义提示框
@@ -241,13 +302,17 @@ with st.sidebar:
                     For_Update_Original_data['产品编号（金蝶云）'] == best_match['code'].strip(), '产品规格'].values[0]
                 cleaned_spec = clean_product_specifications(product_spec)  # 清洗规格
 
+                region_is_hk = st.session_state.get("region_toggle", False)
+
                 # 计算总毛重（假设函数已定义）
                 total_weight = calculate_total_weight_for_sidebar(
                     product_names=[original_best_product_name],  # 使用原始产品名称
                     quantities=[sidebar_quantity],
                     cleaned_product_specifications_names=[cleaned_spec],  # 传入清洗后的规格
                     matched_product_weights=[best_match['weight']],
-                    matched_product_codes=[best_match['code']]
+                    matched_product_codes=[best_match['code']],
+                    is_hk=region_is_hk
+
                 )
 
                 # 条件渲染自定义提示框
@@ -270,7 +335,12 @@ with st.sidebar:
 if "last_upload_method" not in st.session_state:
     st.session_state["last_upload_method"] = None
 
-upload_method = st.radio("🗿请选择上传方式🗿", ("📷图片上传📷", "✍粘贴文本✍"))
+method_col, mid_empty_col, region_col = st.columns([2, 1.5,1])
+with region_col:
+    # 放置我们的区域切换
+    region_toggle_fragment()
+with method_col:
+    upload_method = st.radio("🗿请选择上传方式🗿", ("📷图片上传📷", "✍粘贴文本✍"))
 
 
 # 在模式切换后重置状态的通用逻辑函数
@@ -294,8 +364,7 @@ if upload_method == "📷图片上传📷":
     if 'ocr_result_df_text' in st.session_state:
         del st.session_state['ocr_result_df_text']
 
-    if 'display_df' in st.session_state:
-        del st.session_state['display_df']
+
 
     # 同时清空用户选择的记录
     if 'user_selection_flag' in st.session_state:
@@ -308,6 +377,8 @@ if upload_method == "📷图片上传📷":
     uploaded_image = st.file_uploader("上传产品图片📷", type=["png", "jpg", "jpeg"])
 
     if uploaded_image:
+        # 清空旧的表格数据，确保上传新的数据时可以更新
+
         # 初始化 session_state 变量
         if 'previous_uploaded_file_name' not in st.session_state:
             st.session_state['previous_uploaded_file_name'] = uploaded_image.name
@@ -319,7 +390,13 @@ if upload_method == "📷图片上传📷":
             # 清空所有 session_state，重新设置 `previous_uploaded_file_name`
             # 重置计算相关状态
             reset_calculation_states()
-            st.session_state.clear()
+            # st.session_state.clear()
+
+            # 如果你想重新识别，那么你可以把保存有 OCR 结果的键删掉，但不删 display_df
+            if 'ocr_result_df_image' in st.session_state:
+                del st.session_state['ocr_result_df_image']
+            if 'display_df' in st.session_state:
+                del st.session_state['display_df']
 
             st.session_state['previous_uploaded_file_name'] = previous_uploaded_file_name
             st.session_state['previous_uploaded_file_name'] = uploaded_image.name
@@ -602,13 +679,151 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
                 original_name = For_Update_Original_data.loc[
                     For_Update_Original_data["产品编号（金蝶云）"] == best_match["code"], "产品名称"].values[0]
 
-                warning_message = (
-                    f"🔽 表格{original_row_index + 1} 行： 产品：{original_product_names[idx]} 🔽"
-                    f"对应的最佳匹配项为： 产品 '{original_name}'，"
-                    f"相似度为 {best_match['similarity']:.2f} 🔽 可能需要手动选择匹配项 🔽"
-                ).replace("*", "\\*")  # 转义所有的 *
+                # warning_message = (
+                #     f"🔽 表格{original_row_index + 1} 行： 产品：{original_product_names[idx]} 🔽"
+                #     f"对应的最佳匹配项为： 产品 '{original_name}'，"
+                #     f"相似度为 {best_match['similarity']:.2f} \n\n🔽 可能需要手动选择匹配项 🔽"
+                # ).replace("*", "\\*")  # 转义所有的 *
+                #
+                # st.warning(warning_message)
 
-                st.warning(warning_message)
+
+                warning_html = f"""
+                <div style="
+                    background-color: #fffce7; 
+                    color: #926c05;
+                    font-family: 微软雅黑, sans-serif;
+                    padding: 15px;
+                    font-size: 15.5px;
+                    border-radius: 10px;
+                    margin-top: 10px;
+                    margin-bottom: 20px;
+                    border-left: 5px solid #ffd966;  /* 左侧色条 */
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                ">
+                    <table style="
+                        border-collapse: collapse; 
+                        border: none; 
+                        margin: 0 auto;      /* 表格整体居中 */
+                        table-layout: fixed; 
+                        width: 100%;
+                        max-width: 600px;    /* 根据需要调整最大宽度 */
+                    ">
+                        <!-- 第一行 -->
+                        <tr style="border: none;">
+                            <td style="
+                                text-align: center; 
+                                vertical-align: top;
+                                white-space: nowrap;
+                                padding: 0 5px;
+                                border: none;
+                            ">
+                                🔽
+                            </td>
+                            <td style="
+                                text-align: right; 
+                                vertical-align: top;
+                                white-space: nowrap;
+                                padding: 0 5px;
+                                border: none;
+                            ">
+                                表格 {original_row_index + 1} 行：
+                            </td>
+                            <td style="
+                                text-align: left; 
+                                vertical-align: top;
+                                white-space: nowrap;
+                                padding: 0 5px;
+                                border: none;
+                            ">
+                                <b>{original_product_names[idx]}</b>
+                            </td>
+                            <td style="
+                                text-align: center; 
+                                vertical-align: top;
+                                white-space: nowrap;
+                                padding: 0 5px;
+                                border: none;
+                            ">
+                                🔽
+                            </td>
+                        </tr>
+                        <!-- 第二行 -->
+                        <tr style="border: none;">
+                            <td style="
+                                text-align: center; 
+                                vertical-align: top;
+                                white-space: nowrap;
+                                padding: 0 5px;
+                                border: none;
+                            ">
+                                🔽
+                            </td>
+                            <td style="
+                                text-align: right; 
+                                vertical-align: top;
+                                white-space: nowrap;
+                                padding: 0 5px;
+                                border: none;
+                            ">
+                                对应的最佳匹配项为：
+                            </td>
+                            <td style="
+                                text-align: left; 
+                                vertical-align: top;
+                                white-space: nowrap;
+                                padding: 0 5px;
+                                border: none;
+                            ">
+                                <b>{original_name}</b>， 相似度为 {best_match['similarity']:.2f}
+                            </td>
+                            <td style="
+                                text-align: center; 
+                                vertical-align: top;
+                                white-space: nowrap;
+                                padding: 0 5px;
+                                border: none;
+                            ">
+                                🔽
+                            </td>
+                        </tr>
+                        <!-- 第三行 -->
+                        <tr style="border: none;">
+                            <td style="
+                                text-align: center; 
+                                vertical-align: top;
+                                white-space: nowrap;
+                                padding: 0 5px;
+                                border: none;
+                            ">
+                                🔽
+                            </td>
+                            <td colspan="2" style="
+                                text-align: center; 
+                                white-space: nowrap;
+                                padding: 1px 5px 0 5px;
+                                border: none;
+                            ">
+                                可能需要手动选择匹配项
+                            </td>
+                            <td style="
+                                text-align: center; 
+                                vertical-align: top;
+                                white-space: nowrap;
+                                padding: 0 5px;
+                                border: none;
+                            ">
+                                🔽
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                """
+
+                # 使用 st.markdown 输出自定义的 HTML
+                st.markdown(warning_html, unsafe_allow_html=True)
 
                 # 提供前 5 个匹配项供选择
                 options = [
@@ -621,7 +836,7 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
                 default_option = options[0]
 
                 user_selection = st.selectbox(
-                    " ",
+                    "",
                     options,
                     index=0,
                     key=f"selection_{idx}",
@@ -805,11 +1020,17 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
                         """, unsafe_allow_html=True)
         st.dataframe(updated_ocr_df, hide_index=True)
 
+
+
 if 'edited_ocr_result_df' in st.session_state:
     updated_ocr_df = st.session_state['edited_ocr_result_df']
 
     if (uploaded_image is not None) or (table_text.strip() != ""):
+
         if st.button("💻确定计算💻"):
+
+            # region_is_hk 即为 toggle 状态
+            region_is_hk = st.session_state.get("region_toggle", False)
 
             # 检查编辑后的 DataFrame 是否存在
             # 提取更新后的数据
@@ -825,13 +1046,14 @@ if 'edited_ocr_result_df' in st.session_state:
             updated_weights = updated_ocr_df["毛重"].tolist()
             updated_codes = updated_ocr_df["产品编号(金蝶云)"].tolist()
 
-            # 使用更新后的数据进行计算
+            # 调用新的计算函数, 传递 is_hk
             total_weight, container_info, calculation_details = calculate_total_weight(
                 updated_product_names,
                 updated_quantities,
                 cleaned_updated_specifications_names,
                 updated_weights,
-                updated_codes
+                updated_codes,
+                is_hk=region_is_hk
             )
 
             # 将结果存入 session_state

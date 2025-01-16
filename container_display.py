@@ -13,6 +13,7 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
                                post_progress_messages,
                                 post_change_message,
                                ):
+
     """
     将分配出的柜子分类为大柜子和小柜子，并基于产品名称查询规格、净重、毛重。
 
@@ -24,6 +25,8 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
     :param small_container_limit_weight: 小柜子的重量限制（kg）
     :return: 大柜子列表和小柜子列表
     """
+
+
     large_containers = []
     small_containers = []
     small_container_limit_trays = 20
@@ -61,6 +64,13 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
                 "毛重 (kg)": "未知"
             }
 
+    # 对数量、托盘数、总重量进行四舍五入
+    def round_value(value, decimals=2):
+        try:
+            return round(float(value), decimals)
+        except (ValueError, TypeError):
+            return value  # 如果转换失败，返回原值
+
     def create_display_table(cabinet):
         """
         创建用于展示的产品信息表格，包含规格、净重、毛重。
@@ -68,29 +78,19 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
         display_data = []
         for product in cabinet:
             details = get_product_details(product)
-            # 格式化毛重与重量，保留2位小数
-            try:
-                gross_weight_str = f"{float(details['毛重 (kg)']):.2f}"
-            except (ValueError, TypeError):
-                gross_weight_str = details['毛重 (kg)']
 
-            try:
-                total_weight_str = f"{float(product.get('weight', 0)):.2f}"
-            except (ValueError, TypeError):
-                total_weight_str = product.get('weight', '未知')
+            # 格式化毛重与重量，保留2位小数
+            gross_weight_str = f"{round_value(details['毛重 (kg)']):.2f}"
+            total_weight_str = f"{round_value(product.get('weight', 0)):.2f}"
 
             # 对托盘数也进行两位小数格式化显示
-            try:
-                trays_value = float(product.get("trays", 0))
-                trays_str = f"{trays_value:.2f}"
-            except (ValueError, TypeError):
-                trays_str = product.get("trays", "未知")
+            trays_str = f"{round_value(product.get('trays', 0)):.2f}"
 
             display_data.append({
                 "编号": product.get("产品编号"),
                 "产品名称": product.get("name"),
                 "规格": details["规格"],
-                "数量": product.get("产品数量"),
+                "数量": round_value(product.get("产品数量", 0)),  # 四舍五入数量
                 "毛重 (kg)": gross_weight_str,
                 "托盘数": trays_str,
                 "总重量 (kg)": total_weight_str
@@ -157,33 +157,20 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
                 display_data = []
                 for product in cabinet:
                     details = get_product_details(product)
-                    # 格式化毛重与重量
-                    try:
-                        gross_weight_str = f"{float(details['毛重 (kg)']):.2f}"
-                    except (ValueError, TypeError):
-                        gross_weight_str = details['毛重 (kg)']
-
-                    try:
-                        total_weight_str = f"{float(product.get('weight', 0)):.2f}"
-                    except (ValueError, TypeError):
-                        total_weight_str = product.get('weight', '未知')
-
-                    # 托盘数保留2位小数
-                    try:
-                        trays_value = float(product.get("trays", 0))
-                        trays_str = f"{trays_value:.2f}"
-                    except (ValueError, TypeError):
-                        trays_str = product.get("trays", "未知")
+                    gross_weight_str = f"{round_value(details['毛重 (kg)']):.2f}"
+                    total_weight_str = f"{round_value(product.get('weight', 0)):.2f}"
+                    trays_str = f"{round_value(product.get('trays', 0)):.2f}"
 
                     display_data.append({
                         "编号": product.get("产品编号"),
                         "产品名称": product.get("name"),
                         "规格": details["规格"],
-                        "数量": product.get("产品数量"),
+                        "数量": round_value(product.get("产品数量", 0)),  # 四舍五入数量
                         "毛重 (kg)": gross_weight_str,
                         "托盘数": trays_str,
                         "总重量 (kg)": total_weight_str
                     })
+
                 num_products = len(display_data)
                 for idx, row in enumerate(display_data):
                     html += "<tr>"
@@ -209,6 +196,7 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
         </div>
         """
         return html
+
 
     def display_original_cabinets(cabinets, cabinet_label, no_cabinet_label, cabinet_type):
         """
@@ -325,13 +313,13 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
 
         <div class="success-box-middle">
             <div class="center-text">
-                🩺<strong> {if_start_messages} <br> </strong>
+                <strong> {if_start_messages} <br> </strong>
             </div>
         </div>
 
         <div class="success-box-middle">
             <div class="center-text">
-                🤖<strong> {post_progress_messages} <br> </strong>
+                <strong> {post_progress_messages} <br> </strong>
             </div>
         </div>
 

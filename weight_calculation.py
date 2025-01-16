@@ -1,18 +1,22 @@
 from decimal import Decimal
 from constants import PACKAGE_TO_PALLETS
 import streamlit as st
+from constants import get_package_to_pallets
 
 
 def calculate_total_weight_for_sidebar(product_names, quantities, cleaned_product_specifications_names,
-                                       matched_product_weights, matched_product_codes):
+                                       matched_product_weights, matched_product_codes, is_hk=False):
     total_weight = Decimal(0)
+
+    # 根据 is_hk 决定选择哪种 pallets 映射
+    package_to_pallets = get_package_to_pallets(is_hk)
 
     for i in range(len(matched_product_weights)):
         quantity = Decimal(quantities[i])
         spec = int(cleaned_product_specifications_names[i])
         matched_weight = Decimal(matched_product_weights[i])
 
-        pallets_per_package = Decimal(PACKAGE_TO_PALLETS.get(spec, 1))
+        pallets_per_package = Decimal(package_to_pallets.get(spec, 1))
         tray_count = quantity / pallets_per_package
         single_product_weight = quantity * matched_weight + tray_count * Decimal(17)
 
@@ -33,17 +37,23 @@ def calculate_total_weight_for_sidebar(product_names, quantities, cleaned_produc
 
 
 def calculate_total_weight(product_names, quantities, cleaned_product_specifications_names,
-                           matched_product_weights, matched_product_codes):
+                           matched_product_weights, matched_product_codes,
+    is_hk=False):
+
     total_weight = Decimal(0)
     container_info = []
     calculation_details = []  # 新增，用于存储展示用的信息字符串
+
+    # 同样，先获取 pallets 映射
+    package_to_pallets = get_package_to_pallets(is_hk)
 
     for i in range(len(matched_product_weights)):
         product_codes = matched_product_codes[i]
         quantity = Decimal(quantities[i])
         spec = int(cleaned_product_specifications_names[i])
         matched_weight = Decimal(matched_product_weights[i])
-        pallets_per_package = Decimal(PACKAGE_TO_PALLETS.get(spec, 1))
+
+        pallets_per_package = Decimal(package_to_pallets.get(spec, 1))
         tray_count = quantity / pallets_per_package
         single_product_weight = quantity * matched_weight + tray_count * Decimal(17)
         weight_per_package = pallets_per_package * matched_weight + 17
