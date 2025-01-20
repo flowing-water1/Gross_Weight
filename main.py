@@ -72,6 +72,7 @@ if "update_dialog_shown" not in st.session_state:
 @st.dialog("🚚\u2003柜数计算\u2003🚚", width="large")
 def cabinet(container_info):
     # best_solution, best_fitness = run_genetic_algorithm(container_info, config)
+    st.write(container_info)
     best_solution, best_fitness, generations_run, stats, if_start_messages, post_progress_messages,post_change_message = run_genetic_algorithm(container_info, config)
 
     allocate_cabinets_to_types(best_solution,
@@ -671,8 +672,9 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
         # 更新结果
         # st.write(matched_product_codes)
         # st.write(matched_product_weights)
-        ocr_result_df["产品编号(金蝶云)"] = matched_product_codes
+        ocr_result_df.insert(0, "产品编号(金蝶云)", matched_product_codes)
         ocr_result_df["毛重"] = matched_product_weights
+        
     else:
 
         # 读取匹配产品的Excel文件
@@ -1139,6 +1141,7 @@ if 'edited_ocr_result_df' in st.session_state:
                     st.session_state["cabinet_mode"] = True
 
                     container_info_new = process_container_info(st.session_state["container_info"])
+
                     st.balloons()
 
                     for p in container_info_new:
