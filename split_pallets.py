@@ -53,11 +53,15 @@ def rename_keys(container_info):
     return renamed_container_info
 
 
-def split_pallets_general(total_pallets, total_weight, target_weight, max_pallets_per_part, single_pallet_weight):
+def split_pallets_general(total_pallets, total_weight, target_weight, max_pallets_per_part, single_pallet_weight, product_quantity):
     """
-    将总托数和总重量分配到多个部分，每部分尽量接近其目标重量，并满足最大托数限制。
+    将总托数和总重量分配到多个部分，每部分尽量接近其目标重量，并满足最大托盘数限制，同时调整每部分的产品数量。
     """
     single_pallet_weight = Decimal(single_pallet_weight)
+    product_quantity = Decimal(product_quantity)
+
+    # 计算每个托盘上的产品数量
+    products_per_pallet = product_quantity / total_pallets
 
     allocation = []
     remaining_pallets = Decimal(total_pallets)
@@ -79,13 +83,17 @@ def split_pallets_general(total_pallets, total_weight, target_weight, max_pallet
         else:
             weight = Decimal(pallets) * single_pallet_weight
 
+        # 根据分配的托盘数计算部分的产品数量
+        part_quantity = products_per_pallet * pallets
+
         allocation.append({
             "part_name": part_name,
             "托盘数": pallets,
-            "重量": float(weight)  # 转换回 float 类型用于结果输出
+            "重量": float(weight),  # 转换回 float 类型用于结果输出
+            "产品数量": float(part_quantity)  # 转换为 float，表示拆分后的数量
         })
 
-        # 更新剩余托数和重量
+        # 更新剩余托盘数和重量
         remaining_pallets -= pallets
         remaining_weight -= weight
 
@@ -93,12 +101,9 @@ def split_pallets_general(total_pallets, total_weight, target_weight, max_pallet
 
     return allocation
 
-
 def process_container_info(container_info):
     """
-    处理原始container_info列表：
-    1. 首先通过 rename_keys 统一键值和处理重复产品ID
-    2. 对超过限制的产品进行拆分
+    处理原始container_info列表：首先重命名键并处理重复的产品ID，然后对超过限制的产品进行拆分，调整每部分数量。
     """
     # 首先重命名键并为重复的产品生成唯一ID
     container_info = rename_keys(container_info)
@@ -133,7 +138,8 @@ def process_container_info(container_info):
                 total_weight,
                 max_weight,
                 max_pallets,
-                single_pallet_weight
+                single_pallet_weight,
+                product_quantity
             )
 
             # 将拆分后的部分加入新的container_info_new
@@ -144,7 +150,7 @@ def process_container_info(container_info):
                     '产品编号': product['产品编号'],
                     'id': part_id,
                     'name': part_name,
-                    '产品数量': product_quantity,
+                    '产品数量': part['产品数量'],  # 使用拆分后的数量
                     '每托重量': float(single_pallet_weight),  # 转换为 float
                     'trays': part['托盘数'],
                     'weight': part['重量']
@@ -160,6 +166,5 @@ def process_container_info(container_info):
                 'trays': product['trays'],
                 'weight': product['weight']
             })
-
 
     return container_info_new
