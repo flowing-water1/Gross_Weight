@@ -8,7 +8,6 @@ import streamlit_antd_components as sac
 from constants import PACKAGE_TO_PALLETS
 from container import run_genetic_algorithm, config
 from container_display import allocate_cabinets_to_types
-# from temp import run_genetic_algorithm, allocate_cabinets_to_types, config
 from weight_calculation import calculate_total_weight, calculate_total_weight_for_sidebar
 from data_extraction import extract_product_and_quantity
 from data_cleaning import clean_product_name, clean_product_specifications
@@ -81,7 +80,8 @@ def cabinet(container_info):
                                stats,
                                if_start_messages,
                                post_progress_messages,
-                               post_change_message)
+                               post_change_message,
+                               extra_info_list)
 
 # 加载自定义 CSS
 with open("style.css", encoding="utf-8") as f:
@@ -556,7 +556,21 @@ elif upload_method == "✍粘贴文本✍":
 
             # 更新 session_state
             ocr_result_df = pd.read_excel(xlsx_file_path, header=None)
-            ocr_result_df.columns = ["产品名称", "产品规格", "数量"]
+            num_cols = ocr_result_df.shape[1]  # 实际列数
+            if num_cols == 3:
+                # 旧格式 —— 只有3列：产品名称 / 产品规格 / 数量
+                ocr_result_df.columns = ["产品名称", "产品规格", "数量"]
+
+            elif num_cols == 9:
+                # 新格式 —— 9列：编码 / 供应商 / 产品编码… / 规格型号(Product) / 包装(Packing) / 数量(Quantity) / 采购单价 / 采购总价
+                # 提取需要的列并重新命名
+                ocr_result_df = ocr_result_df.iloc[:, [4, 5, 6]]  # 提取第5, 6, 7列
+                ocr_result_df.columns = ["产品名称", "产品规格", "数量"]
+
+            else:
+                # 如果列数不为3列或9列，给出警告
+                st.warning(f"⚠ 该文件有 {num_cols} 列，不是预期的3列或9列，暂未支持自动匹配。")
+                st.stop()  # 停止执行，避免后面流程报错
             st.session_state['ocr_result_df_text'] = ocr_result_df
             st.session_state['xlsx_file_path'] = xlsx_file_path
             st.session_state['table_uploaded'] = True  # 标记表格已上传
@@ -613,314 +627,351 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
         st.session_state['display_df'] = ocr_result_df.copy()
         st.session_state['display_df'].index = st.session_state['display_df'].index + 1
 
-    dataframe_col1, dataframe_col2 = st.columns([0.45, 1])
+    dataframe_col1, dataframe_col2 = st.columns([0.5, 1])
     with dataframe_col2:
         st.dataframe(st.session_state['display_df'])
 
     # 提取数据
-    original_product_names, specifications, quantities = extract_product_and_quantity(xlsx_file_path)
+    original_product_names, specifications, quantities, extra_info_list= extract_product_and_quantity(xlsx_file_path)
+    # st.write(extra_info_list)
 
     # 清洗数据
     cleaned_product_names = [clean_product_name(name) for name in original_product_names]
     cleaned_product_specifications_names = [clean_product_specifications(spec) for spec in specifications]
 
-    # 读取匹配产品的Excel文件
-    matching_file_path = 'cleaned_data.xlsx'  # 需要在同一目录下提供该文件
-    df = pd.read_excel(matching_file_path, sheet_name='境外贸易商品名称')
+    # 如果有 extra_info_list（新格式），使用编码匹配
+    if extra_info_list and any(extra_info_list):
+        # 提取编码进行精确匹配
+        product_codes_for_query = [item["编码"] for item in extra_info_list]  # 提取“编码”字段
+        matched_product_names = []
+        matched_product_weights = []
+        matched_product_codes = []  # 确保这个列表是空的，准备存储所有的匹配结果
 
-    product_names = df['型号'].dropna().astype(str).tolist()
-    product_weights = df['毛重（箱/桶）'].dropna().astype(float).tolist()
-    product_codes = df['产品编码(金蝶云)'].dropna().astype(str).tolist()
+        # 从匹配文件中读取产品数据
+        matching_file_path = 'cleaned_data.xlsx'  # 需要在同一目录下提供该文件
+        df = pd.read_excel(matching_file_path, sheet_name='境外贸易商品名称')
 
-    # 匹配产品
-    matched_product_names = []
-    matched_product_weights = []
-    matched_product_codes = []
+        product_names = df['型号'].dropna().astype(str).tolist()
+        original_product_names = df['型号'].dropna().astype(str).tolist()  # 假设这个列表包含原始未清洗的名称
+        product_weights = df['毛重（箱/桶）'].dropna().astype(float).tolist()
+        product_codes = df['产品编码(金蝶云)'].dropna().astype(str).tolist()
 
-    # 临时存储用户选择的结果
-    # 在初次加载时，所有选择的标志位（user_selection_flag）为 False，
-    # 并且 user_previous_selection 为 None，确保初次加载时不触发任何用户提示。
-    if 'user_selection_flag' not in st.session_state:
-        # 初始化每个选择项的标志为 False，表示用户尚未进行选择
-        st.session_state['user_selection_flag'] = [False] * len(cleaned_product_names)
-
-    if 'user_previous_selection' not in st.session_state:
-        st.session_state['user_previous_selection'] = [None] * len(cleaned_product_names)
-
-    # 临时存储用户选择的结果
-    user_selected_products = {}
-    with st.expander("📇选择最佳匹配项📇"):
-        for idx, cleaned_name in enumerate(cleaned_product_names):
-            # print(f"Loop idx: {idx}, Current selection: {st.session_state['user_previous_selection'][idx]}")
-
-            filtered_indices = ocr_result_original_df.index[
-                ocr_result_original_df["产品名称"] == original_product_names[idx]].tolist()
-
-            if len(filtered_indices) == 0:
-                st.warning(f"找不到与产品名称 '{original_product_names[idx]}' 相匹配的行，请检查数据。")
-                continue
-            else:
-                original_row_index = filtered_indices[0]
-
-            # 查找逻辑是先在clean_data.xlsx中用名称匹配找（find_best_match传入的都是cleaned.xlsx里面的数据）
-            # 找到了以后，用code匹配在original_data.xlsx中找对应的各条目（For_Update_Original_data）
-            match_result = find_best_match(
-                cleaned_name,
-                product_names,
-                product_weights,
-                product_codes,
-            )
+        # 匹配逻辑
+        for idx, code in enumerate(product_codes_for_query):
+            match_result = find_best_match_by_code(code, product_codes, product_weights, product_names, original_product_names)
 
             best_match = match_result["best_match"]
-            all_matches = match_result["all_matches"]
+            matched_product_names.append(best_match["name"])
+            matched_product_weights.append(best_match["weight"])
 
-            if best_match["similarity"] < 99:
-                # 查找 cleaned_name 对应的原始产品名称
-                original_name = For_Update_Original_data.loc[
-                    For_Update_Original_data["产品编号（金蝶云）"] == best_match["code"], "产品名称"].values[0]
+            # 这里确保每次都把当前匹配的编码添加到列表中
+            matched_product_codes.append(best_match["code"])  # 每次都添加新的编码
 
-                # warning_message = (
-                #     f"🔽 表格{original_row_index + 1} 行： 产品：{original_product_names[idx]} 🔽"
-                #     f"对应的最佳匹配项为： 产品 '{original_name}'，"
-                #     f"相似度为 {best_match['similarity']:.2f} \n\n🔽 可能需要手动选择匹配项 🔽"
-                # ).replace("*", "\\*")  # 转义所有的 *
-                #
-                # st.warning(warning_message)
+        # st.write(product_codes)
+        # 更新结果
+        # st.write(matched_product_codes)
+        # st.write(matched_product_weights)
+        ocr_result_df["产品编号(金蝶云)"] = matched_product_codes
+        ocr_result_df["毛重"] = matched_product_weights
+    else:
 
+        # 读取匹配产品的Excel文件
+        matching_file_path = 'cleaned_data.xlsx'  # 需要在同一目录下提供该文件
+        df = pd.read_excel(matching_file_path, sheet_name='境外贸易商品名称')
 
-                warning_html = f"""
-                <div style="
-                    background-color: #fffce7; 
-                    color: #926c05;
-                    font-family: 微软雅黑, sans-serif;
-                    padding: 15px;
-                    font-size: 15.5px;
-                    border-radius: 10px;
-                    margin-top: 10px;
-                    margin-bottom: 20px;
-                    border-left: 5px solid #ffd966;  /* 左侧色条 */
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                ">
-                    <table style="
-                        border-collapse: collapse; 
-                        border: none; 
-                        margin: 0 auto;      /* 表格整体居中 */
-                        table-layout: fixed; 
-                        width: 100%;
-                        max-width: 600px;    /* 根据需要调整最大宽度 */
-                    ">
-                        <!-- 第一行 -->
-                        <tr style="border: none;">
-                            <td style="
-                                text-align: center; 
-                                vertical-align: top;
-                                white-space: nowrap;
-                                padding: 0 5px;
-                                border: none;
-                            ">
-                                🔽
-                            </td>
-                            <td style="
-                                text-align: right; 
-                                vertical-align: top;
-                                white-space: nowrap;
-                                padding: 0 5px;
-                                border: none;
-                            ">
-                                表格 {original_row_index + 1} 行：
-                            </td>
-                            <td style="
-                                text-align: left; 
-                                vertical-align: top;
-                                white-space: nowrap;
-                                padding: 0 5px;
-                                border: none;
-                            ">
-                                <b>{original_product_names[idx]}</b>
-                            </td>
-                            <td style="
-                                text-align: center; 
-                                vertical-align: top;
-                                white-space: nowrap;
-                                padding: 0 5px;
-                                border: none;
-                            ">
-                                🔽
-                            </td>
-                        </tr>
-                        <!-- 第二行 -->
-                        <tr style="border: none;">
-                            <td style="
-                                text-align: center; 
-                                vertical-align: top;
-                                white-space: nowrap;
-                                padding: 0 5px;
-                                border: none;
-                            ">
-                                🔽
-                            </td>
-                            <td style="
-                                text-align: right; 
-                                vertical-align: top;
-                                white-space: nowrap;
-                                padding: 0 5px;
-                                border: none;
-                            ">
-                                对应的最佳匹配项为：
-                            </td>
-                            <td style="
-                                text-align: left; 
-                                vertical-align: top;
-                                white-space: nowrap;
-                                padding: 0 5px;
-                                border: none;
-                            ">
-                                <b>{original_name}</b>， 相似度为 {best_match['similarity']:.2f}
-                            </td>
-                            <td style="
-                                text-align: center; 
-                                vertical-align: top;
-                                white-space: nowrap;
-                                padding: 0 5px;
-                                border: none;
-                            ">
-                                🔽
-                            </td>
-                        </tr>
-                        <!-- 第三行 -->
-                        <tr style="border: none;">
-                            <td style="
-                                text-align: center; 
-                                vertical-align: top;
-                                white-space: nowrap;
-                                padding: 0 5px;
-                                border: none;
-                            ">
-                                🔽
-                            </td>
-                            <td colspan="2" style="
-                                text-align: center; 
-                                white-space: nowrap;
-                                padding: 1px 5px 0 5px;
-                                border: none;
-                            ">
-                                可能需要手动选择匹配项
-                            </td>
-                            <td style="
-                                text-align: center; 
-                                vertical-align: top;
-                                white-space: nowrap;
-                                padding: 0 5px;
-                                border: none;
-                            ">
-                                🔽
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-                """
+        product_names = df['型号'].dropna().astype(str).tolist()
+        product_weights = df['毛重（箱/桶）'].dropna().astype(float).tolist()
+        product_codes = df['产品编码(金蝶云)'].dropna().astype(str).tolist()
 
-                # 使用 st.markdown 输出自定义的 HTML
-                st.markdown(warning_html, unsafe_allow_html=True)
+        # 匹配产品
+        matched_product_names = []
+        matched_product_weights = []
+        matched_product_codes = []
 
-                # 提供前 5 个匹配项供选择
-                options = [
-                    f"编号：{match['code']} | 产品名称： {For_Update_Original_data.loc[For_Update_Original_data['产品编号（金蝶云）'] == match['code'].strip(), '产品名称'].values[0]} | 相似度: {match['similarity']} | 毛重: {match['weight']} ".replace(
-                        " | ", "\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A0")
-                    for match in all_matches
-                ]
+        # 临时存储用户选择的结果
+        # 在初次加载时，所有选择的标志位（user_selection_flag）为 False，
+        # 并且 user_previous_selection 为 None，确保初次加载时不触发任何用户提示。
+        if 'user_selection_flag' not in st.session_state:
+            # 初始化每个选择项的标志为 False，表示用户尚未进行选择
+            st.session_state['user_selection_flag'] = [False] * len(cleaned_product_names)
 
-                # 默认值为第一个选项
-                default_option = options[0]
+        if 'user_previous_selection' not in st.session_state:
+            st.session_state['user_previous_selection'] = [None] * len(cleaned_product_names)
 
-                user_selection = st.selectbox(
-                    "",
-                    options,
-                    index=0,
-                    key=f"selection_{idx}",
-                    label_visibility="collapsed"
-                )
-                # 使用新的分隔符来拆分选项字符串
-                split_separator = "\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A0"
-                selected_product_code = user_selection.split(split_separator)[0].strip()  # 产品编号在选项的最前面
+        # 临时存储用户选择的结果
+        user_selected_products = {}
+        with st.expander("📇选择最佳匹配项📇"):
+            for idx, cleaned_name in enumerate(cleaned_product_names):
+                # print(f"Loop idx: {idx}, Current selection: {st.session_state['user_previous_selection'][idx]}")
 
-                # 如果前缀是 "编号："（注意这里的全角符号）
-                if selected_product_code.startswith("编号："):
-                    selected_product_code = selected_product_code[len("编号："):].strip()
+                filtered_indices = ocr_result_original_df.index[
+                    ocr_result_original_df["产品名称"] == original_product_names[idx]].tolist()
 
-                # 使用产品编号匹配而不是名称匹配
-                selected_match = next(
-                    (match for match in all_matches if match["code"].strip() == selected_product_code.strip()), None)
-
-                if selected_match is None:
-                    st.warning("未找到符合条件的匹配项，请检查数据或重新选择。")
-                    # 不匹配，解决这里的问题，大概率是因为格式不同，所以搜索不到。
+                if len(filtered_indices) == 0:
+                    st.warning(f"找不到与产品名称 '{original_product_names[idx]}' 相匹配的行，请检查数据。")
+                    continue
                 else:
-                    # 更新匹配结果
-                    matched_product_names.append(selected_match["name"])
-                    matched_product_weights.append(selected_match["weight"])
-                    matched_product_codes.append(selected_match["code"])
+                    original_row_index = filtered_indices[0]
 
-                    # 存储用户选择结果
-                    user_selected_products[cleaned_name] = selected_match
-                    # """
-                    # 为什么一开始不会出现st.toast呢？让我们来分析这个问题。
-                    # 在一开始初始化的时候，为每一个产品名的user_selection_flag都设置为了False，user_previous_selection都是None
-                    # 注意，这是为每一个产品名都赋值了
-                    # Initialized user_selection_flag:
-                    #  [False, False, False, False, False, False, False]
-                    # Initialized user_previous_selection:
-                    #  [None, None, None, None, None, None, None, None]
-                    #  那比如有2个选项，2,4相似度是低于99的，那么其实我们就有两个选项会被处理。
-                    #  一开始因为user_selection没被选，但是user_previous_selection是None，所以我们无论如何都会过一遍这里的代码
-                    #  好，巧妙的点来了，这是利用了状态更新的滞后性来达到“初始化的时候”不会出现toast
-                    #  经过了2的时候，一开始是不会进入 if user_selection_flag的，因为都是False，但是因为这里是会诞生user_selection的
-                    #  （因为select_box会默认选择第一项的原因，也就是user_previous_selection都被设置为了select_box的默认值
-                    #  但是由于第一次每次检测user_selection_flag都会是False，所以不会进入判断）
-                    #  经过2之后，2的user_selection_flag被设定了True，但是！
-                    #  但是巧妙的点来了，下一次是3了，就跳过了这次判断！。
-                    #  所以整体流程是这样的
-                    #  最开始：
-                    # Initialized user_selection_flag:
-                    #  [False, False, False, False, False, False, False]
-                    # Initialized user_previous_selection:
-                    #  [None, None, None, None, None, None, None, None]
-                    #  经过第一次初始化遍历之后：
-                    # Initialized user_selection_flag:
-                    #  [False, False, True, False, True, False, False]
-                    # Initialized user_previous_selection:
-                    #  [None, None, 123, None, 456, None, None, None]
+                # 查找逻辑是先在clean_data.xlsx中用名称匹配找（find_best_match传入的都是cleaned.xlsx里面的数据）
+                # 找到了以后，用code匹配在original_data.xlsx中找对应的各条目（For_Update_Original_data）
+                match_result = find_best_match(
+                    cleaned_name,
+                    product_names,
+                    product_weights,
+                    product_codes,
+                )
+
+                best_match = match_result["best_match"]
+                all_matches = match_result["all_matches"]
+
+                if best_match["similarity"] < 99:
+                    # 查找 cleaned_name 对应的原始产品名称
+                    original_name = For_Update_Original_data.loc[
+                        For_Update_Original_data["产品编号（金蝶云）"] == best_match["code"], "产品名称"].values[0]
+
+                    # warning_message = (
+                    #     f"🔽 表格{original_row_index + 1} 行： 产品：{original_product_names[idx]} 🔽"
+                    #     f"对应的最佳匹配项为： 产品 '{original_name}'，"
+                    #     f"相似度为 {best_match['similarity']:.2f} \n\n🔽 可能需要手动选择匹配项 🔽"
+                    # ).replace("*", "\\*")  # 转义所有的 *
                     #
-                    #  好，那么下次选择变更的时候，都是[idx]的user_previous_selection，此时起主要判断关键的，是的user_previous_selection
-                    #  因为st.session_state['user_selection_flag'][idx]在第一次设置之后，2,4都是True了
-                    #  所以只要是的user_previous_selection对应的[idx]发生变更，就会触发toast。
-                    #  比如说我对2选择了别的选项，那么2的user_previous_selection变更了，变更之后会再进入for循环的，这时到轮转到第2个的时候
-                    #  就发现此时的st.session_state['user_previous_selection'][idx] != user_selection，那么就会触发toast了
-                    # """
-                    # 没有这个的话每个匹配项都会展示一次toast
-                    if st.session_state['user_previous_selection'][idx] != user_selection:
-
-                        if st.session_state['user_selection_flag'][idx]:
-                            # 仅在用户手动更改选项后显示 toast
-                            print(f"now_idx:{idx}")
-                            st.toast("已手动选择匹配项")
-
-                        # 更新选择标志和上一次选择值
-                        st.session_state['user_selection_flag'][idx] = True
-                        print(f"Updated user_selection_flag for idx {idx}: {st.session_state['user_selection_flag']}")
-                        st.session_state['user_previous_selection'][idx] = user_selection
-                        print(
-                            f"Updated user_previous_selection for idx {idx}: {st.session_state['user_previous_selection']}")
+                    # st.warning(warning_message)
 
 
+                    warning_html = f"""
+                    <div style="
+                        background-color: #fffce7; 
+                        color: #926c05;
+                        font-family: 微软雅黑, sans-serif;
+                        padding: 15px;
+                        font-size: 15.5px;
+                        border-radius: 10px;
+                        margin-top: 10px;
+                        margin-bottom: 20px;
+                        border-left: 5px solid #ffd966;  /* 左侧色条 */
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                    ">
+                        <table style="
+                            border-collapse: collapse; 
+                            border: none; 
+                            margin: 0 auto;      /* 表格整体居中 */
+                            table-layout: fixed; 
+                            width: 100%;
+                            max-width: 600px;    /* 根据需要调整最大宽度 */
+                        ">
+                            <!-- 第一行 -->
+                            <tr style="border: none;">
+                                <td style="
+                                    text-align: center; 
+                                    vertical-align: top;
+                                    white-space: nowrap;
+                                    padding: 0 5px;
+                                    border: none;
+                                ">
+                                    🔽
+                                </td>
+                                <td style="
+                                    text-align: right; 
+                                    vertical-align: top;
+                                    white-space: nowrap;
+                                    padding: 0 5px;
+                                    border: none;
+                                ">
+                                    表格 {original_row_index + 1} 行：
+                                </td>
+                                <td style="
+                                    text-align: left; 
+                                    vertical-align: top;
+                                    white-space: nowrap;
+                                    padding: 0 5px;
+                                    border: none;
+                                ">
+                                    <b>{original_product_names[idx]}</b>
+                                </td>
+                                <td style="
+                                    text-align: center; 
+                                    vertical-align: top;
+                                    white-space: nowrap;
+                                    padding: 0 5px;
+                                    border: none;
+                                ">
+                                    🔽
+                                </td>
+                            </tr>
+                            <!-- 第二行 -->
+                            <tr style="border: none;">
+                                <td style="
+                                    text-align: center; 
+                                    vertical-align: top;
+                                    white-space: nowrap;
+                                    padding: 0 5px;
+                                    border: none;
+                                ">
+                                    🔽
+                                </td>
+                                <td style="
+                                    text-align: right; 
+                                    vertical-align: top;
+                                    white-space: nowrap;
+                                    padding: 0 5px;
+                                    border: none;
+                                ">
+                                    对应的最佳匹配项为：
+                                </td>
+                                <td style="
+                                    text-align: left; 
+                                    vertical-align: top;
+                                    white-space: nowrap;
+                                    padding: 0 5px;
+                                    border: none;
+                                ">
+                                    <b>{original_name}</b>， 相似度为 {best_match['similarity']:.2f}
+                                </td>
+                                <td style="
+                                    text-align: center; 
+                                    vertical-align: top;
+                                    white-space: nowrap;
+                                    padding: 0 5px;
+                                    border: none;
+                                ">
+                                    🔽
+                                </td>
+                            </tr>
+                            <!-- 第三行 -->
+                            <tr style="border: none;">
+                                <td style="
+                                    text-align: center; 
+                                    vertical-align: top;
+                                    white-space: nowrap;
+                                    padding: 0 5px;
+                                    border: none;
+                                ">
+                                    🔽
+                                </td>
+                                <td colspan="2" style="
+                                    text-align: center; 
+                                    white-space: nowrap;
+                                    padding: 1px 5px 0 5px;
+                                    border: none;
+                                ">
+                                    可能需要手动选择匹配项
+                                </td>
+                                <td style="
+                                    text-align: center; 
+                                    vertical-align: top;
+                                    white-space: nowrap;
+                                    padding: 0 5px;
+                                    border: none;
+                                ">
+                                    🔽
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    """
 
-            else:
-                # 如果相似度 >= 99，直接使用最佳匹配
-                matched_product_names.append(best_match["name"])
-                matched_product_weights.append(best_match["weight"])
-                matched_product_codes.append(best_match["code"])
+                    # 使用 st.markdown 输出自定义的 HTML
+                    st.markdown(warning_html, unsafe_allow_html=True)
+
+                    # 提供前 5 个匹配项供选择
+                    options = [
+                        f"编号：{match['code']} | 产品名称： {For_Update_Original_data.loc[For_Update_Original_data['产品编号（金蝶云）'] == match['code'].strip(), '产品名称'].values[0]} | 相似度: {match['similarity']} | 毛重: {match['weight']} ".replace(
+                            " | ", "\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A0")
+                        for match in all_matches
+                    ]
+
+                    # 默认值为第一个选项
+                    default_option = options[0]
+
+                    user_selection = st.selectbox(
+                        "",
+                        options,
+                        index=0,
+                        key=f"selection_{idx}",
+                        label_visibility="collapsed"
+                    )
+                    # 使用新的分隔符来拆分选项字符串
+                    split_separator = "\u00A0\u00A0\u00A0|\u00A0\u00A0\u00A0"
+                    selected_product_code = user_selection.split(split_separator)[0].strip()  # 产品编号在选项的最前面
+
+                    # 如果前缀是 "编号："（注意这里的全角符号）
+                    if selected_product_code.startswith("编号："):
+                        selected_product_code = selected_product_code[len("编号："):].strip()
+
+                    # 使用产品编号匹配而不是名称匹配
+                    selected_match = next(
+                        (match for match in all_matches if match["code"].strip() == selected_product_code.strip()), None)
+
+                    if selected_match is None:
+                        st.warning("未找到符合条件的匹配项，请检查数据或重新选择。")
+                        # 不匹配，解决这里的问题，大概率是因为格式不同，所以搜索不到。
+                    else:
+                        # 更新匹配结果
+                        matched_product_names.append(selected_match["name"])
+                        matched_product_weights.append(selected_match["weight"])
+                        matched_product_codes.append(selected_match["code"])
+
+                        # 存储用户选择结果
+                        user_selected_products[cleaned_name] = selected_match
+                        # """
+                        # 为什么一开始不会出现st.toast呢？让我们来分析这个问题。
+                        # 在一开始初始化的时候，为每一个产品名的user_selection_flag都设置为了False，user_previous_selection都是None
+                        # 注意，这是为每一个产品名都赋值了
+                        # Initialized user_selection_flag:
+                        #  [False, False, False, False, False, False, False]
+                        # Initialized user_previous_selection:
+                        #  [None, None, None, None, None, None, None, None]
+                        #  那比如有2个选项，2,4相似度是低于99的，那么其实我们就有两个选项会被处理。
+                        #  一开始因为user_selection没被选，但是user_previous_selection是None，所以我们无论如何都会过一遍这里的代码
+                        #  好，巧妙的点来了，这是利用了状态更新的滞后性来达到“初始化的时候”不会出现toast
+                        #  经过了2的时候，一开始是不会进入 if user_selection_flag的，因为都是False，但是因为这里是会诞生user_selection的
+                        #  （因为select_box会默认选择第一项的原因，也就是user_previous_selection都被设置为了select_box的默认值
+                        #  但是由于第一次每次检测user_selection_flag都会是False，所以不会进入判断）
+                        #  经过2之后，2的user_selection_flag被设定了True，但是！
+                        #  但是巧妙的点来了，下一次是3了，就跳过了这次判断！。
+                        #  所以整体流程是这样的
+                        #  最开始：
+                        # Initialized user_selection_flag:
+                        #  [False, False, False, False, False, False, False]
+                        # Initialized user_previous_selection:
+                        #  [None, None, None, None, None, None, None, None]
+                        #  经过第一次初始化遍历之后：
+                        # Initialized user_selection_flag:
+                        #  [False, False, True, False, True, False, False]
+                        # Initialized user_previous_selection:
+                        #  [None, None, 123, None, 456, None, None, None]
+                        #
+                        #  好，那么下次选择变更的时候，都是[idx]的user_previous_selection，此时起主要判断关键的，是的user_previous_selection
+                        #  因为st.session_state['user_selection_flag'][idx]在第一次设置之后，2,4都是True了
+                        #  所以只要是的user_previous_selection对应的[idx]发生变更，就会触发toast。
+                        #  比如说我对2选择了别的选项，那么2的user_previous_selection变更了，变更之后会再进入for循环的，这时到轮转到第2个的时候
+                        #  就发现此时的st.session_state['user_previous_selection'][idx] != user_selection，那么就会触发toast了
+                        # """
+                        # 没有这个的话每个匹配项都会展示一次toast
+                        if st.session_state['user_previous_selection'][idx] != user_selection:
+
+                            if st.session_state['user_selection_flag'][idx]:
+                                # 仅在用户手动更改选项后显示 toast
+                                print(f"now_idx:{idx}")
+                                st.toast("已手动选择匹配项")
+
+                            # 更新选择标志和上一次选择值
+                            st.session_state['user_selection_flag'][idx] = True
+                            print(f"Updated user_selection_flag for idx {idx}: {st.session_state['user_selection_flag']}")
+                            st.session_state['user_previous_selection'][idx] = user_selection
+                            print(
+                                f"Updated user_previous_selection for idx {idx}: {st.session_state['user_previous_selection']}")
+
+
+
+                else:
+                    # 如果相似度 >= 99，直接使用最佳匹配
+                    matched_product_names.append(best_match["name"])
+                    matched_product_weights.append(best_match["weight"])
+                    matched_product_codes.append(best_match["code"])
 
     # 当你使用 ocr_result_df.insert() 方法插入一个新列时，如果这个列已经存在于 ocr_result_df 中，会抛出一个 ValueError 错误，因为 insert()
     # 方法要求插入的列是新的且不存在的。
@@ -930,6 +981,7 @@ if 'ocr_result_df_text' in st.session_state or 'ocr_result_df_image' in st.sessi
     if "产品编号(金蝶云)" in ocr_result_df.columns:
         ocr_result_df["产品编号(金蝶云)"] = matched_product_codes
     else:
+
         ocr_result_df.insert(0, "产品编号(金蝶云)", matched_product_codes)
 
     ocr_result_df["毛重"] = matched_product_weights

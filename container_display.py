@@ -6,14 +6,36 @@ import pandas as pd
 import math
 from st_copy_to_clipboard import st_copy_to_clipboard
 
+import re
+
+
+# 新增函数：用于提取采购单价中的数字和货币单位，并计算采购总价
+def extract_price_and_calculate_total(price_str, quantity):
+    """
+    提取采购单价中的数字和货币单位，并计算采购总价。
+
+    :param price_str: 采购单价字符串（例如 "USD 51.00" 或 "YUAN 51.00"）
+    :param quantity: 数量
+    :return: 采购总价和货币单位
+    """
+    # 正则表达式提取货币单位和数字部分
+    match = re.match(r"([A-Za-z]+)\s*(\d+(\.\d{1,2})?)", price_str.strip())
+
+    if match:
+        currency = match.group(1)  # 提取货币单位
+        price = float(match.group(2))  # 提取数字部分并转为浮动类型
+        total_price = price * quantity  # 计算总价
+        return f"{currency} {total_price:.2f}"  # 返回带货币单位的总价字符串
+    else:
+        return "Invalid Price"
 
 
 def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
                                if_start_messages,
                                post_progress_messages,
-                                post_change_message,
+                               post_change_message,
+                               extra_info_list
                                ):
-
     """
     将分配出的柜子分类为大柜子和小柜子，并基于产品名称查询规格、净重、毛重。
 
@@ -25,7 +47,6 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
     :param small_container_limit_weight: 小柜子的重量限制（kg）
     :return: 大柜子列表和小柜子列表
     """
-
 
     large_containers = []
     small_containers = []
@@ -97,10 +118,29 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
             })
         return pd.DataFrame(display_data)
 
-    def create_html_table(large_cabinets, small_cabinets):
+    def create_html_table(large_cabinets, small_cabinets, extra_info_list=None):
         """
         创建用于展示的所有柜子的HTML表格，包含合并单元格的“柜型”列。
+        根据extra_info_list来动态调整列数
         """
+
+        # 定义默认列顺序和顺序B
+        default_columns = [
+            "编号", "产品名称", "规格", "数量", "毛重 (kg)", "托盘数", "总重量 (kg)", "柜型"
+        ]
+        sequence_b_columns = [
+            "编码", "供应商", "产品编码（SAP Product Code）", "SO/发票号（invoice）",
+             "产品名称", "规格", "数量", "采购单价(Price)", "采购总价(TOTAL)",
+            "毛重 (kg)", "托盘数", "总重量 (kg)", "柜型"
+        ]
+
+
+        # 根据是否有附加列来决定列顺序
+        if extra_info_list and any(extra_info_list):  # 确保extra_info_list非空且有有效数据
+            columns = sequence_b_columns
+        else:
+            columns = default_columns
+
         html = """
         <style>
             .cabinet-table {
@@ -138,18 +178,30 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
             <table class="cabinet-table">
                 <thead>
                     <tr>
-                        <th>编号</th>
-                        <th>产品名称</th>
-                        <th>规格</th>
-                        <th>数量</th>
-                        <th>毛重 (kg)</th>
-                        <th>托盘数</th>
-                        <th>总重量 (kg)</th>
-                        <th>柜型</th>
-                    </tr>
-                </thead>
-                <tbody>
+
+
         """
+        # 创建标题行，根据列顺序来排列
+        for column in columns:
+            html += f"<th>{escape(column)}</th>"
+
+        # 如果是9列数据，动态添加额外的列
+        if extra_info_list:
+            html += """
+
+
+        </tr>
+        </thead>
+        <tbody>
+            """
+        # 如果是9列数据，动态添加额外的列
+        if extra_info_list and any(extra_info_list):  # 检查是否有有效内容
+            # 构建一个字典，以编号为键，extra_info_list的内容为值
+            extra_info_dict = {}
+            for info in extra_info_list:
+                # 假设extra_info_list的每一行有"编码"字段
+                if info:  # 仅当info非空时才添加到字典
+                    extra_info_dict[info.get("编码")] = info
 
         def add_cabinets_to_html(cabinets, cabinet_type):
             nonlocal html
@@ -171,18 +223,48 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
                         "总重量 (kg)": total_weight_str
                     })
 
+                    # 如果有 extra_info_list，添加额外信息
+                    if extra_info_list and any(extra_info_list):  # 仅在有效的extra_info_list时处理
+                        product_code = product.get("产品编号")
+                        # 获取extra_info_dict中的附加信息
+                        extra_info = extra_info_dict.get(product_code, {})
+                        display_data[-1].update(extra_info)
+
                 num_products = len(display_data)
                 for idx, row in enumerate(display_data):
                     html += "<tr>"
-                    html += f"<td>{escape(str(row['编号']))}</td>"
-                    html += f"<td>{escape(str(row['产品名称']))}</td>"
-                    html += f"<td>{escape(str(row['规格']))}</td>"
-                    html += f"<td>{escape(str(row['数量']))}</td>"
-                    html += f"<td>{escape(str(row['毛重 (kg)']))}</td>"
-                    html += f"<td>{escape(str(row['托盘数']))}</td>"
-                    html += f"<td>{escape(str(row['总重量 (kg)']))}</td>"
+                    # 根据列顺序插入数据
+                    for column in columns:
+                        # 如果是“采购单价(Price)”列
+                        if column == "采购单价(Price)" and extra_info_list:
+                            price_str = row.get("采购单价(Price)", "")
+                            html += f"<td>{escape(price_str)}</td>"
+
+                        # 如果是“采购总价(TOTAL)”列
+                        elif column == "采购总价(TOTAL)" and extra_info_list:
+                            price_str = row.get("采购单价(Price)", "")
+                            # 这里你可以直接用 row["数量"]，或者像你写的那样，用 product里的 "产品数量"
+                            quantity = row.get("数量", 0)
+                            if price_str and quantity:
+                                # 改用你正确的数量
+
+                                # st.info(f"正确数量: {quantity}")
+
+                                total_price = extract_price_and_calculate_total(price_str, quantity)
+                                # st.info(f"计算总价: {total_price}")
+
+                                html += f"<td>{escape(total_price)}</td>"
+                            else:
+                                # 如果拿不到单价或数量，就留空
+                                html += "<td></td>"
+
+                        # 否则，如果这个列名正好在 row 中，就用默认逻辑
+                        elif column in row:
+                            html += f"<td>{escape(str(row[column]))}</td>"
                     if idx == 0:
                         html += f"<td rowspan='{num_products}'>{escape(cabinet_type)}</td>"
+
+
                     html += "</tr>"
 
         # 添加大柜子
@@ -196,7 +278,6 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
         </div>
         """
         return html
-
 
     def display_original_cabinets(cabinets, cabinet_label, no_cabinet_label, cabinet_type):
         """
@@ -221,9 +302,9 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
         else:
             st.info(f"🈚{no_cabinet_label}◽◽◽◽")
 
-    def display_total_table(large_cabinets, small_cabinets):
+    def display_total_table(large_cabinets, small_cabinets, extra_info_list):
 
-        html_table = create_html_table(large_cabinets, small_cabinets)
+        html_table = create_html_table(large_cabinets, small_cabinets, extra_info_list)
 
         st.header("📦 总表")
 
@@ -328,7 +409,7 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
                 <strong> {post_change_message} <br> </strong>
             </div>
         </div>
-                
+
         <div class="success-box-bottom">
             <div class="left-right">
                 <div class="left">
@@ -342,8 +423,6 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
 
     """, unsafe_allow_html=True)
 
-
-
     # 显示大柜子信息（原有展示）
     display_original_cabinets(large_containers, "📦 大柜子列表", "大柜子", "大柜子")
 
@@ -355,4 +434,4 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
     st.divider()
 
     # 显示总表（新增展示）
-    display_total_table(large_containers, small_containers)
+    display_total_table(large_containers, small_containers, extra_info_list)
