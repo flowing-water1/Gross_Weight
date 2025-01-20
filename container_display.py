@@ -116,7 +116,7 @@ def allocate_cabinets_to_types(solution, best_fitness, generations_run, stats,
                 "托盘数": trays_str,
                 "总重量 (kg)": total_weight_str
             })
-            st.write(display_data)
+            
         return pd.DataFrame(display_data)
 
     def create_html_table(large_cabinets, small_cabinets, extra_info_list=None):
