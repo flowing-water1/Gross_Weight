@@ -72,7 +72,7 @@ if "update_dialog_shown" not in st.session_state:
 @st.dialog("🚚\u2003柜数计算\u2003🚚", width="large")
 def cabinet(container_info):
     # best_solution, best_fitness = run_genetic_algorithm(container_info, config)
-    st.write(container_info)
+    # st.write(container_info)
     best_solution, best_fitness, generations_run, stats, if_start_messages, post_progress_messages,post_change_message = run_genetic_algorithm(container_info, config)
 
     allocate_cabinets_to_types(best_solution,
